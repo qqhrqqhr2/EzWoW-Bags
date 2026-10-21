@@ -2,7 +2,8 @@
 
 ## CurseForge
 
-- **Project ID / 프로젝트 ID:** 아직 없음 (not created yet) — `EzWoW-Bags.toc`의 `X-Curse-Project-ID`와 `release.json`의 `project_id`를 같은 번호로 바꿔 주세요.
+- **Project ID / 프로젝트 ID:** `1757680`
+- **Project page / 프로젝트 페이지:** [EzWoW-Bags](https://www.curseforge.com/projects/1757680)
 
 **[한국어](#한국어) · [English](#english)**
 
