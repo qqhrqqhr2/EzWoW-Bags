@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: EzWoW - Bags
+## Notes: Categorized bags, character storage and cached auction prices for WoW Forever.
+## Notes-koKR: 통합 가방, 부캐 보관함, 전문기술 용도, 경매 시세 (/ezbags)
+## Author: qqhrqqhr2
+## Version: 0.1.15
+## Category: EzWoW
+## IconTexture: Interface\AddOns\EzWoW-Bags\Media\Icon
+## SavedVariables: EzWoW_BagsDB
+## OptionalDeps: EzWoW-ProfessionRecipes, EzWoW-Tooltip
+
+Core\Bootstrap.lua
+Core\Locales.lua
+Core\API.lua
+Data\Reagents.lua
+Modules\Search.lua
+Modules\Inventory.lua
+Modules\Model.lua
+Modules\Actions.lua
+Modules\Auction.lua
+Modules\PriceCatalog.lua
+UI\Widgets.lua
+UI\Window.lua
+UI\Options.lua
+Core\Events.lua
