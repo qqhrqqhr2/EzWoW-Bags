@@ -19,9 +19,9 @@ WoW Forever (`Interface: 16001`) · `/ezbags`, `/ezb`
 
 ### 화면 미리보기
 
-![통합 가방 창](docs/images/ui_ko.png)
+![통합 가방 창](https://raw.githubusercontent.com/qqhrqqhr2/EzWoW-Bags/master/docs/images/ui_ko.png)
 
-![설정창](docs/images/settings_ko.png)
+![설정창](https://raw.githubusercontent.com/qqhrqqhr2/EzWoW-Bags/master/docs/images/settings_ko.png)
 
 > 이미지는 애드온 코드의 창 크기·좌표·색상·문구로 재현한 **예시 화면**입니다. 아이템 그림은 단순화했고, 캐릭터 이름·시세 숫자는 예시입니다.
 
@@ -93,9 +93,9 @@ A bag addon that shows your bags and bank in one window, **grouped by category**
 
 ### Screenshots
 
-![Bag window](docs/images/ui_en.png)
+![Bag window](https://raw.githubusercontent.com/qqhrqqhr2/EzWoW-Bags/master/docs/images/ui_en.png)
 
-![Settings window](docs/images/settings_en.png)
+![Settings window](https://raw.githubusercontent.com/qqhrqqhr2/EzWoW-Bags/master/docs/images/settings_en.png)
 
 > These are **mock-ups** rebuilt from the window sizes, coordinates, colours and strings in the code. Item art is simplified; character names and prices are examples.
 
@@ -163,4 +163,4 @@ If you find this addon useful, you can support its development.
 
 [Buy Me a Coffee ☕](https://buymeacoffee.com/qqhrqqhr2)
 
-<a href="https://buymeacoffee.com/qqhrqqhr2"><img src="docs/images/bmc_qr.png" alt="Buy Me a Coffee 후원 QR 코드" width="220" /></a>
+<a href="https://buymeacoffee.com/qqhrqqhr2"><img src="https://raw.githubusercontent.com/qqhrqqhr2/EzWoW-Bags/master/docs/images/bmc_qr.png" alt="Buy Me a Coffee 후원 QR 코드" width="220" /></a>
