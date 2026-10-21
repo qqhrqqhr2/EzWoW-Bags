@@ -4,8 +4,11 @@ local white = "Interface\\Buttons\\WHITE8X8"
 UI.Theme = {
     bg = { .071, .094, .122, .97 }, panel = { .114, .157, .192, .96 }, input = { .047, .067, .086, .96 }, border = { .204, .298, .357, 1 },
     text = { .929, .957, .969, 1 }, muted = { .655, .725, .773, 1 }, accent = { .94, .72, .42, 1 },
+    hover = { .18, .27, .31, 1 }, warn = { .906, .486, .439, 1 },
 }
-UI.Sizes = { titleIcon = 28, buttonIcon = 16, close = 22, button = 24, bagButton = 36 }
+-- Same header as the other EzWoW windows: 56px bar, 28px icon, title + subtitle, 2px accent line.
+UI.HEADER = 57
+UI.Sizes = { titleIcon = 28, buttonIcon = 16, close = 24, button = 24, bagButton = 36 }
 UI.icons = {
     bags = "Interface\\Buttons\\Button-Backpack-Up", bank = "Interface\\Icons\\INV_Misc_Bag_10_Blue",
     prices = "Interface\\Icons\\INV_Misc_Coin_01", settings = "Interface\\AddOns\\EzWoW-Bags\\Media\\gear",
@@ -94,21 +97,27 @@ function UI.Selected(button, selected)
 end
 function UI.Chrome(frame, title)
     UI.Surface(frame)
-    frame.headerBg = frame:CreateTexture(nil, "BACKGROUND"); frame.headerBg:SetPoint("TOPLEFT", 1, -1); frame.headerBg:SetPoint("TOPRIGHT", -1, -1)
-    frame.headerBg:SetHeight(37); frame.headerBg:SetColorTexture(unpack(UI.Theme.panel))
-    frame.brandIcon = frame:CreateTexture(nil, "ARTWORK"); frame.brandIcon:SetSize(UI.Sizes.titleIcon, UI.Sizes.titleIcon); frame.brandIcon:SetPoint("TOPLEFT", 14, -5)
+    frame.headerBg = frame:CreateTexture(nil, "BACKGROUND", nil, 1); frame.headerBg:SetPoint("TOPLEFT", 1, -1); frame.headerBg:SetPoint("TOPRIGHT", -1, -1)
+    frame.headerBg:SetHeight(56); frame.headerBg:SetColorTexture(unpack(UI.Theme.panel))
+    frame.brandIcon = frame:CreateTexture(nil, "ARTWORK"); frame.brandIcon:SetSize(UI.Sizes.titleIcon, UI.Sizes.titleIcon); frame.brandIcon:SetPoint("TOPLEFT", 14, -14)
     frame.brandIcon:SetTexture("Interface\\AddOns\\EzWoW-Bags\\Media\\Icon")
-    title:ClearAllPoints(); title:SetPoint("TOPLEFT", 48, -12); title:SetFontObject("GameFontNormalLarge"); title:SetTextColor(unpack(UI.Theme.accent))
-    frame.brandLine = frame:CreateTexture(nil, "ARTWORK"); frame.brandLine:SetPoint("TOPLEFT", 14, -38)
-    frame.brandLine:SetPoint("TOPRIGHT", -14, -38); frame.brandLine:SetHeight(2); frame.brandLine:SetColorTexture(unpack(UI.Theme.accent))
+    title:ClearAllPoints(); title:SetPoint("TOPLEFT", 48, -11); title:SetFontObject("GameFontNormalLarge"); title:SetTextColor(unpack(UI.Theme.accent))
+    frame.subtitle = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    frame.subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -3); frame.subtitle:SetJustifyH("LEFT")
+    frame.subtitle:SetPoint("RIGHT", frame, "RIGHT", -150, 0); frame.subtitle:SetTextColor(unpack(UI.Theme.muted))
+    if frame.subtitle.SetWordWrap then frame.subtitle:SetWordWrap(false) end
+    frame.brandLine = frame:CreateTexture(nil, "ARTWORK"); frame.brandLine:SetPoint("TOPLEFT", 1, -55)
+    frame.brandLine:SetPoint("TOPRIGHT", -1, -55); frame.brandLine:SetHeight(2); frame.brandLine:SetColorTexture(unpack(UI.Theme.accent))
 end
 function UI.Button(parent, text, width, callback, icon)
     local b = UI.Frame("Button", nil, parent); b:SetSize(width or 80, UI.Sizes.button)
     UI.Surface(b, unpack(UI.Theme.panel))
     b.text = UI.Label(b, text); b.text:SetPoint("CENTER"); b.text:SetWidth((width or 80) - 8); b.text:SetJustifyH("CENTER")
     b:SetScript("OnClick", callback)
+    b:SetScript("OnMouseDown", function(self) self.text:SetPoint("CENTER", 1, -1) end)
+    b:SetScript("OnMouseUp", function(self) self.text:SetPoint("CENTER", 0, 0) end)
     b:SetScript("OnEnter", function(self)
-        self:SetBackdropBorderColor(unpack(UI.Theme.accent)); self:SetBackdropColor(.18, .24, .30, 1)
+        self:SetBackdropBorderColor(unpack(UI.Theme.accent)); self:SetBackdropColor(unpack(UI.Theme.hover))
     end)
     b:SetScript("OnLeave", function(self)
         UI.Selected(self, self.selected)
@@ -124,8 +133,14 @@ function UI.Edit(parent, width, height)
     return e
 end
 function UI.CloseButton(parent, callback)
-    local button = UI.Button(parent, "×", UI.Sizes.close, callback)
-    button:SetHeight(UI.Sizes.close); button:SetPoint("TOPRIGHT", -10, -9)
+    local button = UI.Frame("Button", nil, parent); button:SetSize(UI.Sizes.close, UI.Sizes.close)
+    button:SetPoint("TOPRIGHT", -14, -16); button:SetFrameLevel(parent:GetFrameLevel() + 5)
+    UI.Surface(button, unpack(UI.Theme.bg))
+    button.text = button:CreateFontString(nil, "OVERLAY", "GameFontNormal"); button.text:SetPoint("CENTER")
+    button.text:SetText("X"); button.text:SetTextColor(unpack(UI.Theme.muted))
+    button:SetScript("OnEnter", function(self) self:SetBackdropBorderColor(unpack(UI.Theme.warn)); self.text:SetTextColor(unpack(UI.Theme.warn)) end)
+    button:SetScript("OnLeave", function(self) self:SetBackdropBorderColor(unpack(UI.Theme.border)); self.text:SetTextColor(unpack(UI.Theme.muted)) end)
+    button:SetScript("OnClick", callback)
     return button
 end
 function UI.Check(parent, text, checked, callback)

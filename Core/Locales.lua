@@ -102,6 +102,10 @@ ns.text = {
         "分类名称：1–80 字节。", "分類名稱：1–80 位元組。" },
     maxCategories = { "사용자 분류는 40개까지 만들 수 있습니다.", "Maximum 40 categories.", "Höchstens 40 Kategorien.",
         "40 catégories au maximum.", "Máximo 40 categorías.", "Не больше 40 категорий.", "最多 40 个分类。", "最多 40 個分類。" },
+    subtitle = { "가방·은행을 분류별로 보고 부캐 보관함과 경매장 시세를 확인합니다.", "Bags and bank by category, alt storage and auction prices.",
+        "Taschen und Bank nach Kategorien, Twink-Lager und Auktionspreise.", "Sacs et banque par catégorie, stockage des rerolls et prix des enchères.",
+        "Bolsas y banco por categorías, almacén de alters y precios de subasta.", "Сумки и банк по категориям, хранилища персонажей и цены аукциона.",
+        "按分类查看背包与银行、小号仓库和拍卖价格。", "依分類查看背包與銀行、分身倉庫和拍賣價格。" },
     mail = { "우편", "Mail", "Post", "Courrier", "Correo", "Почта", "邮件", "郵件" },
     trade = { "거래", "Trade", "Handel", "Échange", "Comercio", "Обмен", "交易", "交易" },
     merchant = { "상인에게 판매", "Sell to vendor", "An Händler verkaufen", "Vendre au marchand", "Vender al mercader",
@@ -116,6 +120,9 @@ end
 -- Option labels and search errors keyed by their English text: { deDE, frFR, esES, ruRU, zhCN, zhTW }
 local byEnglish = {
     ["Auto (game language)"] = { "Automatisch (Spielsprache)", "Automatique (langue du jeu)", "Automático (idioma del juego)", "Авто (язык игры)", "自动（游戏语言）", "自動（遊戲語言）" },
+    ["General"] = { "Allgemein", "Général", "General", "Общие", "常规", "一般" },
+    ["Item icons"] = { "Symbole", "Icônes d'objets", "Iconos de objetos", "Значки предметов", "物品图标", "物品圖示" },
+    ["Categories & window"] = { "Kategorien & Fenster", "Catégories et fenêtre", "Categorías y ventana", "Категории и окно", "分类与窗口", "分類與視窗" },
     ["Language"] = { "Sprache", "Langue", "Idioma", "Язык", "语言", "語言" },
     ["Replace default bags"] = { "Standardtaschen ersetzen", "Remplacer les sacs par défaut", "Reemplazar bolsas predeterminadas", "Заменить стандартные сумки", "替换默认背包", "取代預設背包" },
     ["Applies after login or /reload."] = { "Gilt nach dem Einloggen oder /reload.", "S'applique après connexion ou /reload.", "Se aplica tras iniciar sesión o /reload.", "Применяется после входа или /reload.", "登录或 /reload 后生效。", "登入或 /reload 後生效。" },

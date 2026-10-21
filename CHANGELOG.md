@@ -10,6 +10,8 @@
 - 언어 선택을 다른 EzWoW 애드온과 같은 공통 콤보박스로 바꿨습니다. 보기·정렬도 누를 때마다 바뀌지 않고 목록에서 고릅니다.
 - 분류 이동 메뉴의 우편·거래·상인 이름이 영어로 나오던 문제를 고쳤습니다.
 - 애드온 목록의 제목·설명을 10개 게임 언어로 등록하고 CurseForge 배포 파일을 추가했습니다.
+- 대표 아이콘을 다른 EzWoW 아이콘과 같은 틀(테두리 두께, 왼쪽 위 점)로 다시 만들었습니다.
+- 창·설정창의 제목 영역을 다른 EzWoW 창과 같게 맞췄습니다: 56px 제목 영역, 제목 아래 설명, 전체 폭 강조선, X 닫기 버튼(빨간 강조), 버튼 누름 효과. 설정창은 일반·아이콘 표시·보기·분류·창 구역으로 나눴습니다.
 
 ### English
 
@@ -19,6 +21,8 @@
 - The language picker now uses the shared EzWoW combo box; view and sorting are picked from a list instead of cycling.
 - Fixed mail/trade/vendor names in the move menu showing in English.
 - Added localized addon list title/notes and CurseForge release files.
+- Rebuilt the addon icon on the shared EzWoW frame (border width, top-left dot).
+- Window and settings headers now match the other EzWoW windows (56px header with subtitle, full-width accent line, X close button, pressed buttons); settings are split into sections.
 
 ## v0.1.15 — 열쇠고리 이미지
 

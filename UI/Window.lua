@@ -224,7 +224,7 @@ function ns.CreateWindow()
     local close = UI.CloseButton(f, function() f:Hide() end)
     local opts = UI.Button(f, ns.T("settings"), 80, function() ns.ToggleOptions() end); opts:SetPoint("RIGHT", close, "LEFT", -6, 0)
     f.optionsButton = opts
-    f.character = UI.Button(f, "", 210, function() ns.CharacterMenu() end); f.character:SetPoint("TOPLEFT", 16, -82)
+    f.character = UI.Button(f, "", 210, function() ns.CharacterMenu() end); f.character:SetPoint("TOPLEFT", 16, -101)
     UI.SetIcon(opts, UI.icons.settings); UI.SetIcon(f.character, UI.icons.characters)
     f.tabs = {}
     for i, mode in ipairs({ "bags", "bank", "prices" }) do
@@ -233,24 +233,24 @@ function ns.CreateWindow()
             ns.mode = key; if key ~= "prices" then ns.storage = key end
             ns.moveQueue, ns.filterCategory = nil, nil; ns.scroll:SetVerticalScroll(0); ns.Refresh()
         end)
-        b:SetPoint("TOPLEFT", 16 + (i - 1) * 111, -46); b:SetHeight(28); UI.SetIcon(b, UI.icons[mode]); f.tabs[mode] = b
+        b:SetPoint("TOPLEFT", 16 + (i - 1) * 111, -65); b:SetHeight(28); UI.SetIcon(b, UI.icons[mode]); f.tabs[mode] = b
     end
-    f.search = UI.Edit(f, 360); f.search:SetPoint("TOPRIGHT", -16, -46)
+    f.search = UI.Edit(f, 360); f.search:SetPoint("TOPRIGHT", -16, -66)
     f.search:SetScript("OnTextChanged", function() ns.filterCategory = nil; if ns.scroll then ns.scroll:SetVerticalScroll(0); ns.Refresh() end end)
     f.search:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:AddLine(ns.Text("help"), 1, 1, 1, true); GameTooltip:Show()
     end)
     f.search:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    f.status = UI.Label(f, ""); f.status:SetPoint("TOPLEFT", 16, -118); f.status:SetWidth(810)
+    f.status = UI.Label(f, ""); f.status:SetPoint("TOPLEFT", 16, -137); f.status:SetWidth(810)
     f.sideScroll = CreateFrame("ScrollFrame", nil, f)
-    f.sideScroll:SetPoint("TOPLEFT", 12, -139); f.sideScroll:SetSize(130, 407)
+    f.sideScroll:SetPoint("TOPLEFT", 12, -158); f.sideScroll:SetSize(130, 407)
     f.sidebar = UI.Frame("Frame", nil, f.sideScroll); f.sidebar:SetSize(130, 407); UI.Surface(f.sidebar, .07, .11, .14)
     f.sideScroll:SetScrollChild(f.sidebar); f.sideScroll:EnableMouseWheel(true)
     f.sideScroll:SetScript("OnMouseWheel", function(self, delta)
         self:SetVerticalScroll(math.max(0, math.min(self:GetVerticalScrollRange(), self:GetVerticalScroll() - delta * 54)))
     end)
     ns.scroll = CreateFrame("ScrollFrame", "EzWoWBagsScroll", f, "UIPanelScrollFrameTemplate")
-    ns.scroll:SetPoint("TOPLEFT", 148, -140); ns.scroll:SetPoint("BOTTOMRIGHT", -28, 100)
+    ns.scroll:SetPoint("TOPLEFT", 148, -159); ns.scroll:SetPoint("BOTTOMRIGHT", -28, 100)
     ns.scroll:HookScript("OnVerticalScroll", function() if ns.mode == "prices" then ns.priceScrollDirty = true end end)
     ns.content = CreateFrame("Frame", nil, ns.scroll); ns.content:SetSize(626, 1); ns.scroll:SetScrollChild(ns.content)
     f.emptyMessage = UI.Label(ns.content, ""); f.emptyMessage:SetPoint("TOPLEFT", 12, -16); f.emptyMessage:SetWidth(580)
@@ -379,8 +379,8 @@ function ns.Render()
     f.character:SetWidth(desiredWidth - 32); f.character.text:SetWidth(desiredWidth - 88)
     f.search:SetWidth(desiredWidth - 374); f.status:SetWidth(desiredWidth - 32)
     f.footer:SetWidth(desiredWidth - 32); f.queue:SetWidth(desiredWidth - 250); f.emptyMessage:SetWidth(desiredWidth - 64)
-    f.title:SetText("EzWoW - Bags  /  " .. ns.T(ns.mode or "bags"))
-    f.title:SetWidth(desiredWidth - 210)
+    f.title:SetText("EzWoW - Bags")
+    f.subtitle:SetText(ns.T(ns.mode or "bags") .. " · " .. ns.Text("subtitle"))
     f.optionsButton.text:SetText(ns.T("settings"))
     f.scan.text:SetText(ns.T("scan")); f.bagScan.text:SetText(ns.T("bagScan"))
     f.next.text:SetText(ns.T("next")); f.cancel.text:SetText(ns.T("stop"))
@@ -400,7 +400,7 @@ function ns.Render()
     f.sideScroll:Show()
     if f.priceLayout ~= prices then
         f.priceLayout = prices
-        ns.scroll:ClearAllPoints(); ns.scroll:SetPoint("TOPLEFT", 148, -140); ns.scroll:SetPoint("BOTTOMRIGHT", -28, 100)
+        ns.scroll:ClearAllPoints(); ns.scroll:SetPoint("TOPLEFT", 148, -159); ns.scroll:SetPoint("BOTTOMRIGHT", -28, 100)
     end
     if prices then
         for _, b in ipairs(bagButtons) do b:Hide() end
@@ -516,9 +516,9 @@ function ns.Render()
     if n == 0 then
         f.emptyMessage:SetText(prices and (ns.T("prices") .. ": 0\n\n" .. (shared and ns.Text("ahShared") or ns.Auction.status or (job and (ns.T("scan") .. " …") or ns.Text("ahClosed")))) or (err and ns.Text("queryError") .. err or ns.T("empty")))
     end
-    local desiredHeight = math.max(380, math.min(650, math.max(h + 251, (ns.sidebarHeight or 0) + 246)))
+    local desiredHeight = math.max(399, math.min(669, math.max(h + 270, (ns.sidebarHeight or 0) + 265)))
     ns.ResizeWindow(desiredWidth, desiredHeight)
-    if f.sideScroll:GetHeight() ~= math.max(100, desiredHeight - 239) then f.sideScroll:SetHeight(math.max(100, desiredHeight - 239)) end
+    if f.sideScroll:GetHeight() ~= math.max(100, desiredHeight - 258) then f.sideScroll:SetHeight(math.max(100, desiredHeight - 258)) end
 end
 function ns.Show(storage)
     if not ns.window then return end

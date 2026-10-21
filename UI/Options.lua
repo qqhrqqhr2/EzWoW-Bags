@@ -26,7 +26,7 @@ function ns.ToggleOptions()
     if ns.options then ns.UpdateOptions(); ns.options:SetShown(not ns.options:IsShown()); return end
     local f = UI.Frame("Frame", "EzWoWBagsOptions", UIParent); ns.options = f
     f.bindings, f.controls = {}, {}
-    f:SetSize(400, 488); f:SetPoint("CENTER"); f:SetFrameStrata("DIALOG"); UI.Surface(f)
+    f:SetSize(420, 600); f:SetPoint("CENTER"); f:SetFrameStrata("DIALOG"); UI.Surface(f)
     f:SetClampedToScreen(true); f:SetMovable(true); f:EnableMouse(true); f:RegisterForDrag("LeftButton")
     f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
     UISpecialFrames[#UISpecialFrames + 1] = "EzWoWBagsOptions"
@@ -38,11 +38,25 @@ function ns.ToggleOptions()
         return text
     end
     local title = UI.Label(f, "", 15); f.title = title; UI.Chrome(f, title)
-    bind(function() title:SetText("EzWoW - Bags / " .. ns.T("settings")) end)
-    local close = UI.CloseButton(f, function() f:Hide() end)
-    f.languageLabel = label("언어", "Language", 18, 54)
-    f.language = UI.Button(f, "", 212, nil)
-    f.language:SetPoint("TOPLEFT", 170, -48)
+    bind(function()
+        title:SetText("EzWoW - Bags")
+        f.subtitle:SetText(ns.T("settings") .. " · " .. ns.Text("subtitle"))
+    end)
+    UI.CloseButton(f, function() f:Hide() end)
+    local y = 70
+    -- section heading: accent title with a thin line under it (same as the other EzWoW settings)
+    local function section(ko, en)
+        local text = label(ko, en, 20, y)
+        text:SetFontObject("GameFontNormal"); text:SetTextColor(unpack(UI.Theme.accent))
+        local line = f:CreateTexture(nil, "ARTWORK")
+        line:SetColorTexture(.204, .298, .357, .85); line:SetHeight(1)
+        line:SetPoint("TOPLEFT", 20, -y - 18); line:SetPoint("TOPRIGHT", -20, -y - 18)
+        y = y + 26
+    end
+    section("일반", "General")
+    f.languageLabel = label("언어", "Language", 20, y + 6, 180)
+    f.language = UI.Button(f, "", 182, nil)
+    f.language:SetPoint("TOPLEFT", 218, -y)
     local languageItems = {}
     for i, value in ipairs(ns.languages) do
         languageItems[i] = { value = value, text = function() return languageName(value) end }
@@ -53,10 +67,12 @@ function ns.ToggleOptions()
         set = function(value) ns.SetLanguage(value) end,
     })
     bind(function() f.language.text:SetText(languageName(ns.cfg.language) .. "  ▾") end)
-    local function check(key, ko, en, index, hintKo, hintEn)
+    y = y + 30
+    local column = 0
+    local function check(key, ko, en, hintKo, hintEn)
         local b = UI.Check(f, "", ns.cfg[key], function(value) ns.cfg[key] = value; ns.Refresh() end)
-        b:SetPoint("TOPLEFT", index % 2 == 0 and 16 or 208, -82 - math.floor(index / 2) * 24)
-        b.label:SetWidth(index % 2 == 0 and 160 or 144)
+        b:SetPoint("TOPLEFT", column == 0 and 18 or 216, -y)
+        b.label:SetWidth(166)
         f.controls[key] = b
         bind(function() b.label:SetText(optionLabel(ko, en)); b:SetChecked(ns.cfg[key]) end)
         if hintKo then
@@ -65,18 +81,24 @@ function ns.ToggleOptions()
             end)
             b:SetScript("OnLeave", function() GameTooltip:Hide() end)
         end
+        column = 1 - column
+        if column == 0 then y = y + 26 end
     end
-    check("replace", "기본 가방 대체", "Replace default bags", 0, "다음 로그인 또는 /reload 후 적용됩니다.", "Applies after login or /reload.")
-    check("merge", "묶음 합계 표시", "Combine stacks", 1, "같은 아이템의 수량을 합칩니다. 클릭은 첫 묶음을 조작합니다.", "Combine identical item counts. Clicking acts on the first stack.")
-    check("labels", "아이템 용도", "Purpose labels", 2)
-    check("itemLevel", "장비 레벨", "Equipment levels", 3)
-    check("emptySlots", "빈 칸 개별 표시", "Individual free slots", 4)
-    check("newSection", "새 아이템 분류", "New item category", 5)
-    local y = 162
-    local function cycle(key, ko, en, values)
-        label(ko, en, 18, y + 6, 192)
-        local b = UI.Button(f, "", 162, nil)
-        b:SetPoint("TOPLEFT", 220, -y); f.controls[key] = b
+    local function endChecks() if column == 1 then column = 0; y = y + 26 end; y = y + 8 end
+    check("replace", "기본 가방 대체", "Replace default bags", "다음 로그인 또는 /reload 후 적용됩니다.", "Applies after login or /reload.")
+    check("merge", "묶음 합계 표시", "Combine stacks", "같은 아이템의 수량을 합칩니다. 클릭은 첫 묶음을 조작합니다.", "Combine identical item counts. Clicking acts on the first stack.")
+    endChecks()
+    section("아이콘 표시", "Item icons")
+    check("labels", "아이템 용도", "Purpose labels")
+    check("itemLevel", "장비 레벨", "Equipment levels")
+    check("emptySlots", "빈 칸 개별 표시", "Individual free slots")
+    check("newSection", "새 아이템 분류", "New item category")
+    endChecks()
+    section("보기", "View")
+    local function choice(key, ko, en, values)
+        label(ko, en, 20, y + 6, 190)
+        local b = UI.Button(f, "", 182, nil)
+        b:SetPoint("TOPLEFT", 218, -y); f.controls[key] = b
         local choices = {}
         for i, value in ipairs(values) do choices[i] = { value = value, text = function() return ns.T(value) end } end
         local list = ns.LanguageDropdown.Attach(b, {
@@ -87,21 +109,21 @@ function ns.ToggleOptions()
         -- the shared combo marks language boxes with .languageList; this one is a plain choice box
         b.languageList, b.choiceList = nil, list
         bind(function() b.text:SetText(ns.T(tostring(ns.cfg[key])) .. "  ▾") end)
-        y = y + 26
+        y = y + 28
     end
-    cycle("view", "보기", "View", { "sections", "grid", "list" })
-    cycle("itemSort", "아이템 정렬", "Item sorting", { "quality", "name" })
-    cycle("sectionSort", "분류 정렬", "Category sorting", { "name", "size" })
-    y = y + 4
+    choice("view", "보기", "View", { "sections", "grid", "list" })
+    choice("itemSort", "아이템 정렬", "Item sorting", { "quality", "name" })
+    choice("sectionSort", "분류 정렬", "Category sorting", { "name", "size" })
+    y = y + 2
     local function number(key, ko, en, lo, hi, step)
-        label(ko, en, 18, y + 5, 192)
-        local value = UI.Label(f, ""); value:SetPoint("TOPLEFT", 248, -y - 5); value:SetWidth(106); value:SetJustifyH("CENTER")
+        label(ko, en, 20, y + 5, 190)
+        local value = UI.Label(f, ""); value:SetPoint("TOPLEFT", 244, -y - 5); value:SetWidth(130); value:SetJustifyH("CENTER")
         local function adjust(delta)
             ns.cfg[key] = math.floor(math.max(lo, math.min(hi, ns.cfg[key] + delta)) * 100 + .5) / 100
             ns.UpdateOptions(); ns.Refresh()
         end
-        local minus = UI.Button(f, "−", 24, function() adjust(-step) end); minus:SetPoint("TOPLEFT", 220, -y); minus:SetHeight(22)
-        local plus = UI.Button(f, "+", 24, function() adjust(step) end); plus:SetPoint("TOPLEFT", 358, -y); plus:SetHeight(22)
+        local minus = UI.Button(f, "-", 22, function() adjust(-step) end); minus:SetPoint("TOPLEFT", 218, -y); minus:SetHeight(20)
+        local plus = UI.Button(f, "+", 22, function() adjust(step) end); plus:SetPoint("TOPLEFT", 378, -y); plus:SetHeight(20)
         f.controls[key] = { minus = minus, plus = plus, value = value }
         bind(function()
             local text = tostring(ns.cfg[key])
@@ -118,26 +140,32 @@ function ns.ToggleOptions()
     number("size", "아이콘 크기", "Icon size", 28, 56, 2)
     number("scale", "창 크기", "Window scale", .65, 1.4, .05)
     number("opacity", "불투명도", "Opacity", .4, 1, .05)
-    local restore = UI.Button(f, "", 178, function()
+    y = y + 8
+    section("분류·창", "Categories & window")
+    local restore = UI.Button(f, "", 186, function()
         for _, category in pairs(ns.cfg.categories) do category.hidden, category.disabled = nil, nil end
         ns.Refresh()
-    end); restore:SetPoint("TOPLEFT", 18, -370)
+    end); restore:SetPoint("TOPLEFT", 20, -y)
     bind(function() restore.text:SetText(optionLabel("숨김·꺼진 분류 복원", "Restore categories")) end)
-    local anchor = UI.Button(f, "", 178, function()
+    local anchor = UI.Button(f, "", 186, function()
         ns.cfg.growUp = false; ns.window:ClearAllPoints()
         ns.window:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 40, -100)
         ns.ResizeWindow(ns.window:GetWidth(), ns.window:GetHeight())
-    end); anchor:SetPoint("TOPLEFT", 204, -370)
+    end); anchor:SetPoint("TOPLEFT", 214, -y)
     bind(function() anchor.text:SetText(optionLabel("창 위치 초기화", "Reset position")) end)
-    label("분류 이름", "Category name", 18, 402, 110)
-    label("검색식", "Search expression", 136, 402, 210)
-    local name = UI.Edit(f, 110); name:SetPoint("TOPLEFT", 18, -418); f.categoryName = name
-    local query = UI.Edit(f, 210); query:SetPoint("TOPLEFT", 136, -418); query:SetText(ns.window.search:GetText()); f.categoryQuery = query
+    y = y + 34
+    label("분류 이름", "Category name", 20, y, 120)
+    label("검색식", "Search expression", 146, y, 220)
+    y = y + 16
+    local name = UI.Edit(f, 120); name:SetPoint("TOPLEFT", 20, -y); f.categoryName = name
+    local query = UI.Edit(f, 216); query:SetPoint("TOPLEFT", 146, -y); query:SetText(ns.window.search:GetText()); f.categoryQuery = query
     local add = UI.Button(f, "+", 28, function()
         local id, err = ns.AddCategory(name:GetText(), query:GetText())
         if id then name:SetText(""); query:SetText("") else ns.Print(err) end
-    end); add:SetPoint("TOPLEFT", 354, -418)
-    local hint = label("검색식을 비우면 아이템을 끌어 놓아 지정합니다.", "Leave the query empty to assign items by dragging.", 18, 450, 364)
-    hint:SetHeight(28)
+    end); add:SetPoint("TOPLEFT", 372, -y)
+    y = y + 32
+    local hint = label("검색식을 비우면 아이템을 끌어 놓아 지정합니다.", "Leave the query empty to assign items by dragging.", 20, y, 380)
+    hint:SetHeight(28); hint:SetTextColor(unpack(UI.Theme.muted))
+    f:SetHeight(y + 40)
     ns.UpdateOptions()
 end
