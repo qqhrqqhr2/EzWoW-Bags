@@ -41,8 +41,8 @@ function ns.RemoveCategory(id)
 end
 function ns.AddCategory(name, query)
     name = (name or ""):match("^%s*(.-)%s*$")
-    if name == "" or #name > 80 then return nil, "Name: 1–80 bytes" end
-    if #ns.cfg.custom >= 40 then return nil, "Maximum 40 categories" end
+    if name == "" or #name > 80 then return nil, ns.Text("nameLength") end
+    if #ns.cfg.custom >= 40 then return nil, ns.Text("maxCategories") end
     local _, err = ns.Search.Compile(query or "")
     if err then return nil, err end
     local id = "custom:" .. tostring(time()) .. ":" .. tostring(#ns.cfg.custom + 1)
@@ -84,7 +84,7 @@ function ns.NextMove()
             local slots, family = API.Free(bag)
             if (slots or 0) > 0 and (family or 0) == 0 then free = true; break end
         end
-        if not free then ns.Print("No general bag space"); return end
+        if not free then ns.Print(ns.Text("noSpace")); return end
         API.Use(e)
     elseif q.target == "merchant" then
         if not ns.state.merchant or ns.storage ~= "bags" then return end

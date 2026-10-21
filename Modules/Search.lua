@@ -112,5 +112,5 @@ function Search.Compile(text)
         return root
     end)
     if ok then return result end
-    return nil, result
+    return nil, ns.TranslateError and ns.TranslateError(result) or result
 end

@@ -3,7 +3,7 @@ local frame = CreateFrame("Frame")
 local events = { "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_LOGOUT", "BAG_UPDATE_DELAYED", "BAG_UPDATE", "ITEM_LOCK_CHANGED",
     "GET_ITEM_INFO_RECEIVED", "PLAYER_MONEY", "BANKFRAME_OPENED", "BANKFRAME_CLOSED", "PLAYERBANKSLOTS_CHANGED", "BAG_CONTAINER_UPDATE", "BANK_TABS_CHANGED",
     "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "AUCTION_ITEM_LIST_UPDATE", "REPLICATE_ITEM_LIST_UPDATE",
-    "MERCHANT_SHOW", "MERCHANT_CLOSED", "MAIL_SHOW", "MAIL_CLOSED", "TRADE_SHOW", "TRADE_CLOSED", "PLAYER_REGEN_DISABLED", "PLAYER_EQUIPMENT_CHANGED" }
+    "MERCHANT_SHOW", "MERCHANT_CLOSED", "MAIL_SHOW", "MAIL_CLOSED", "TRADE_SHOW", "TRADE_CLOSED", "PLAYER_REGEN_DISABLED", "PLAYER_EQUIPMENT_CHANGED", "BAG_UPDATE_COOLDOWN" }
 for _, event in ipairs(events) do pcall(frame.RegisterEvent, frame, event) end
 local function replaceBags()
     if not ns.cfg.replace then return end
@@ -51,7 +51,7 @@ local function init()
         elseif text == "bank" then ns.Show("bank")
         elseif text == "scan" then ns.Auction.Start("full")
         elseif text == "debug" then
-            ns.Print("0.1.15 · bank=" .. (ns.API.ModernBank() and "tabs" or "legacy") .. " · keyring=" .. ns.API.Keyring()
+            ns.Print("0.1.16 · bank=" .. (ns.API.ModernBank() and "tabs" or "legacy") .. " · keyring=" .. ns.API.Keyring()
                 .. " · legacyAH=" .. tostring(type(QueryAuctionItems) == "function")
                 .. " · replicate=" .. tostring(C_AuctionHouse and type(C_AuctionHouse.ReplicateItems) == "function" or false)
                 .. " · nativeRows=" .. ns.Auction.NativeCount())
@@ -67,6 +67,7 @@ frame:SetScript("OnEvent", function(_, event, arg, success)
     if not ns.ready then return end
     if event == "BAG_UPDATE_DELAYED" or event == "BAG_UPDATE" or event == "ITEM_LOCK_CHANGED"
         or event == "PLAYERBANKSLOTS_CHANGED" or event == "BAG_CONTAINER_UPDATE" or event == "BANK_TABS_CHANGED" or event == "PLAYER_EQUIPMENT_CHANGED" then ns.Dirty()
+    elseif event == "BAG_UPDATE_COOLDOWN" then ns.viewDirty = true
     elseif event == "GET_ITEM_INFO_RECEIVED" then
         if success ~= false then
             ns.PriceCatalog.MetadataReady(arg)

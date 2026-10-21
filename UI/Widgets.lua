@@ -231,7 +231,7 @@ function ns.CategoryMenu(id)
         for _, target in ipairs({ "bank", "mail", "trade", "merchant" }) do
             local key = target
             if ns.state[target] and (target == "bank" or ns.storage == "bags") then
-                entries[#entries + 1] = { ns.T("move") .. " → " .. (target == "bank" and ns.T("bank") or target), function() ns.BeginMove(id, key) end }
+                entries[#entries + 1] = { ns.T("move") .. " → " .. (target == "bank" and ns.T("bank") or ns.Text(target)), function() ns.BeginMove(id, key) end }
             end
         end
     end

@@ -1,250 +1,149 @@
-# EzWoW - Bags 0.1.15
+# EzWoW - Bags (`EzWoW-Bags`)
 
-와우 포에버, Interface 16001용 통합 가방 애드온의 수정 테스트 버전입니다.
-BetterBags의 기능을 참고했으며 코드·그래픽을 복사하지 않았습니다.
-청록색 EzWoW 테마, 왼쪽 분류 목록, 상단 보관함 전환으로 화면을 구성했습니다.
+## CurseForge
 
-## 설치
+- **Project ID / 프로젝트 ID:** 아직 없음 (not created yet) — `EzWoW-Bags.toc`의 `X-Curse-Project-ID`와 `release.json`의 `project_id`를 같은 번호로 바꿔 주세요.
 
-압축을 풀고 `EzWoW-Bags` 폴더를 게임의 `Interface/AddOns` 안에 넣으세요.
-최종 위치는 `Interface/AddOns/EzWoW-Bags/EzWoW-Bags.toc`입니다.
-0.1.4는 애드온 목록 분류와 새 아이콘 파일을 추가하므로 게임을 완전히 종료한 뒤 덮어쓰고 다시 실행하세요.
-다른 가방 대체 애드온은 게임 애드온 목록에서 꺼두고 시험하는 편이 좋습니다.
+**[한국어](#한국어) · [English](#english)**
 
-0.1.0에서 업데이트하는 경우 폴더를 덮어쓰고 `/reload`하세요. 설정 파일을 지울 필요는 없습니다.
-이전 버전이 잘못된 번호로 저장한 은행 기록은 복구용으로 보존하고 표시에서 제외합니다.
-각 캐릭터로 은행을 한 번 다시 열면 올바른 보관함 번호로 새로 저장됩니다.
+WoW Forever (`Interface: 16001`) · `/ezbags`, `/ezb`
 
-## 0.1.15 열쇠고리 이미지
+---
 
-- 열쇠고리 아이콘을 이전의 은색 열쇠 이미지 `INV_Misc_Key_03`으로 되돌렸습니다.
-- 가방 순서와 빈 칸 합계·열쇠고리 분리 처리는 0.1.14의 수정 사항을 유지합니다.
-- 폴더를 덮어쓴 뒤 `/reload`하세요.
+## 한국어
 
-## 0.1.14 기본 가방 순서와 빈 칸 표시
+### 개요
 
-- 하단 아이콘을 기본 가방처럼 왼쪽부터 열쇠고리 → 재료 가방 → 일반 가방 4·3·2·1 → 배낭 순서로 배치합니다. 실제 이동 대상의 가방 번호는 유지합니다.
-- 배낭 숫자는 해당 배낭 한 개의 빈 칸이 아니라 전체 가방 빈 칸을 표시합니다. 현재 캐릭터를 스캔할 때 기본 UI와 같은 `C_Container.CalculateTotalNumberOfFreeBagSlots()`를 사용하고 캐릭터별로 저장합니다.
-- 열쇠고리 빈 칸을 일반·재료·특수 가방의 합계에서 분리했습니다. 예시 화면의 가방 빈 칸은 29(일반 24 + 재료 5)이고 열쇠고리 빈 칸 29는 별도입니다.
-- 각 장착 가방은 자기 빈 칸 수를 표시합니다. 열쇠고리는 기본 UI처럼 숫자 오버레이 없이 표시하며 툴팁에서 빈 칸/전체 칸을 확인합니다.
-- 재료 가방과 탄약통·영혼 주머니 같은 특수 가방을 구분하고, 빈 칸 계산은 컨테이너 API의 저장 값을 우선 사용합니다. 은행과 부캐 조회는 해당 보관함의 저장 정보만 사용합니다.
-- 열쇠고리는 기본 UI의 키링 아틀라스 또는 기본 키링 텍스처, 배낭은 포에버 기본 배낭 텍스처를 사용합니다.
-- 기준 자료: [기본 배낭의 빈 칸 계산](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_MainMenuBarBagButtons/Shared/MainMenuBarBagButtons.lua), [포에버 가방 배치](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_MainMenuBarBagButtons/Camelot/MainMenuBarBagButtons.xml).
-- 폴더를 덮어쓴 뒤 `/reload`하세요.
+가방·은행을 하나의 창에서 **분류별**로 보여 주는 가방 애드온입니다. 아이콘 위에 **아이템 용도**(퀘·비귀속·책·연금·재봉 같은 전문 기술)를 표시하고, **다른 캐릭터의 가방·은행**을 보기 전용으로 열어 볼 수 있으며, **경매장 시세**를 저장해 툴팁과 분류 합계에 보여 줍니다.
 
-## 0.1.13 EzWoW 스타일·아이콘 점검
+### 설치
 
-- 기존 EzWoW Tooltip·Utility Bar·Profession Recipes의 UI 색상과 크기를 대조해 공통 배경·입력칸·본문 글자색·제목 글꼴·마우스 강조 효과를 맞췄습니다. Bags의 강조색은 금색입니다.
-- 제목 아이콘 28px, 버튼·캐릭터 아이콘 16px, 닫기 버튼 22×22, 일반 버튼 높이 24px로 정리했습니다. 컴팩트한 제목 영역과 설정창 크기는 유지합니다.
-- 대표 가방 아이콘은 기존 EzWoW 아이콘과 바깥 테두리 위치·두께·둥근 모서리·채도를 맞췄습니다. PNG는 256×256, 게임용 TGA는 64×64 RGBA이며 모서리는 투명합니다.
-- 아이템 아이콘 기본 30px와 하단 실제 장착 가방 버튼 36px는 용도에 맞춰 유지합니다. 설정 톱니 에셋은 기존 EzWoW 공통 에셋과 동일합니다.
-- 아이콘 캐시 갱신을 위해 게임을 완전히 종료하고 폴더를 덮어쓴 뒤 다시 실행하세요.
+1. `EzWoW-Bags` 폴더를 `Interface/AddOns/` 폴더에 넣습니다. 최종 위치는 `Interface/AddOns/EzWoW-Bags/EzWoW-Bags.toc`입니다.
+2. 캐릭터 선택 화면의 **애드온** 목록에서 켭니다. 다른 가방 대체 애드온은 꺼 두세요.
+3. **B 키** 또는 기본 가방 버튼을 누르면 통합 창이 열립니다.
 
-## 0.1.12 기본값 확정
+### 사용법
 
-- 언어 자동, 분류 보기, 아이템·분류 이름순 정렬을 기본으로 사용합니다.
-- 전체 12칸(6+6), 분류 2열, 아이콘 30, 창 크기 1, 불투명도 0.96입니다.
-- 기본 가방 대체·묶음 합계·아이템 용도·장비 레벨은 켜고, 빈 칸 개별 표시·새 아이템 별도 분류는 끕니다.
-- 새 설치 또는 누락된 설정에 적용하는 기본값입니다. 기존에 저장한 사용자 설정은 유지합니다.
+| 부분 | 설명 |
+|---|---|
+| 위쪽 탭 | **가방 · 은행 · 시세** 화면을 바꿉니다. |
+| 캐릭터 선택 | 같은 서버의 다른 캐릭터를 고르면 그 캐릭터가 마지막으로 저장한 가방·은행을 **보기 전용**으로 보여 줍니다. 은행은 그 캐릭터로 은행을 한 번 열어야 저장됩니다. |
+| 검색 | 이름·종류·용도로 찾습니다. `ilvl>=50`, `rarity=rare`, `AND / OR / NOT`, 괄호, 따옴표를 쓸 수 있습니다. |
+| 왼쪽 분류 목록 | 누르면 그 분류만 보여 줍니다. 오른쪽 클릭은 분류 메뉴입니다. 아이템을 끌어다 놓으면 그 사용자 분류에 넣습니다. |
+| 분류 머리글 | 누르면 접고 펼칩니다. 오른쪽 클릭: 고정 · 숨김 · 끄기, 사용자 분류 순서·검색식·삭제, 은행·우편·거래·상인으로 옮기기. 시세를 아는 아이템은 합계(≈)를 보여 줍니다. |
+| 아이템 | 왼쪽 클릭 집기, **오른쪽 클릭 사용**(물약·음식·귀환석 등, 전투 중에도), Shift 클릭 링크·나누기. 현재 캐릭터의 실제 가방과 열린 은행에서만 동작합니다. |
+| 아래쪽 가방 아이콘 | 열쇠고리 → 재료 가방 → 가방 4·3·2·1 → 배낭 순서. 빈 칸 수를 표시하고, 아이템을 끌어 놓으면 그 가방에 넣습니다. |
+| 새 아이템 ✓ | 이번 접속에서 새로 들어온 아이템(초록 점) 표시를 지웁니다. |
+| 시세 탭 | **전체 시세 수집**(경매장 전체) 또는 **가방 아이템 조회**(가방에 있는 아이템만). 경매장이 열려 있어야 합니다. 왼쪽에서 아이템 종류로 거를 수 있습니다. |
 
-## 0.1.11 설정 칸 수와 실제 배치 일치
+- 툴팁에는 쓰이는 전문 기술, 경매장 단가와 수집 시각, 같은 서버 캐릭터별 가방·은행 보유 수가 붙습니다.
+- EzWoW - Tooltip이 켜져 있으면 시세 수집은 Tooltip이 맡고 Bags는 그 가격을 함께 씁니다(툴팁 시세 줄도 Tooltip이 표시).
 
-- 너비 축소 비율과 최대 너비 제한 때문에 설정한 칸 수보다 적게 배치되던 문제를 수정했습니다. 칸 수와 아이콘 크기에 필요한 너비만 계산합니다.
-- `줄당 칸 수 (전체)`는 분류 열에 나눠 배치합니다. 분류 2열에서 18칸은 9+9, 19칸은 10+9이며, 설정값 옆에 배분도 표시합니다. 전체 보기에서는 설정한 칸 수를 한 줄에 배치합니다.
-- 작은 칸 수에서는 버튼·검색창 공간을 확보하되 아이템 칸 수를 임의로 늘리지 않습니다. 칸 수를 크게 설정하면 이를 담을 수 있도록 창이 넓어집니다.
-- 가방·은행·시세 공통 너비와 좌상단 고정을 유지합니다.
-- 검색 도움말은 아이템 이름과 용도의 쉬운 예시로 변경했습니다.
-- 폴더를 덮어쓴 뒤 `/reload`하세요.
+#### 분류 머리글로 옮기기
 
-## 0.1.10 컴팩트 설정창·언어 목록·가방 너비
+은행·우편·거래·상인 창이 열린 동안 머리글 오른쪽 클릭 → 옮길 곳을 고르면, 아래쪽 **다음 아이템** 버튼을 누를 때마다 실제 묶음 하나씩 옮깁니다. 상인에게는 판매가가 있는 일반·하급 아이템만 팔고, 퀘스트·직접 지정한 아이템은 빼고 팝니다.
 
-- 설정창을 400×488로 줄이고 체크 항목을 두 열로 묶었습니다. 긴 설명은 해당 항목의 툴팁으로 제공합니다.
-- 언어 선택을 맨 위에 두고 자동·한국어·영어·독일어·프랑스어·스페인어·러시아어·중국어 간체·번체의 펼침 목록을 제공합니다.
-- 목록에서 언어를 선택하면 설정 문구와 가방 화면을 바로 갱신합니다. 입력 중인 사용자 분류 이름과 검색식은 유지합니다.
-- 가방·은행·시세 공통 너비 계산을 약 12% 줄이고 범위를 500~660으로 좁혔습니다. 아이콘은 사용 가능한 너비에 맞춰 다음 줄로 배치하며 좌상단 위치는 유지합니다.
-- 업데이트 후 `/reload`로 새 코드를 불러오세요. 이후 언어 선택은 즉시 적용됩니다.
+### 설정창 (`/ezbags settings`)
 
-## 0.1.9 창 위치와 공통 너비
+| 항목 | 기본값 |
+|---|---|
+| 언어 (자동 + 8개 언어) | 자동 |
+| 기본 가방 대체 (다음 접속 또는 `/reload` 후 적용) | 켬 |
+| 묶음 합계 표시 · 아이템 용도 · 장비 레벨 | 켬 |
+| 빈 칸 개별 표시 · 새 아이템 분류 | 끔 |
+| 보기: 분류 · 전체 · 목록 | 분류 |
+| 아이템 정렬: 이름 · 등급 / 분류 정렬: 이름 · 크기 | 이름 · 이름 |
+| 줄당 칸 수 (전체) 6~20 · 분류 열 수 1~3 | 12 · 2 |
+| 아이콘 크기 28~56 · 창 크기 0.65~1.4 · 불투명도 0.4~1 | 30 · 1 · 0.96 |
+| 숨김·꺼진 분류 복원 · 창 위치 초기화 | - |
+| 사용자 분류 만들기: 이름 + 검색식 (검색식을 비우면 아이템을 끌어 놓아 지정) | - |
 
-- 가방·은행·시세와 캐릭터를 바꾸어 창 높이가 달라져도 좌상단 위치를 유지합니다. 크기는 오른쪽과 아래쪽으로 바뀝니다.
-- 시세 탭의 별도 너비를 없애고 가방·은행과 동일한 아이콘 크기·줄당 칸 수 설정으로 너비를 계산합니다.
-- 창 이동 후 저장과 확대 배율 변경도 좌상단 위치를 기준으로 처리합니다. 기존에 중앙·오른쪽 기준으로 저장한 위치는 현재 좌상단 좌표로 변환합니다.
-- 설정의 고정점 전환 버튼은 창 위치 초기화로 변경했습니다.
-- 폴더를 덮어쓴 뒤 `/reload`하세요.
+### 명령어 (`/ezbags`, `/ezb`)
 
-## 0.1.8 전체 이름·캐릭터 선택·가방 이동·시세 분류
+| 명령어 | 설명 |
+|---|---|
+| `/ezbags` | 통합 창 열기/닫기 |
+| `/ezbags bank` | 저장된 은행 보기 |
+| `/ezbags settings` | 설정창 |
+| `/ezbags scan` | 경매장이 열린 상태에서 전체 시세 수집 |
+| `/ezbags debug` | 은행·경매 API 상태와 수집 진행 상황 |
 
-- 포에버의 이름 표시 함수를 사용해 `대족장 드랄`처럼 성을 포함한 전체 이름을 표시합니다. 이전의 이름 앞부분만 사용한 기록은 가방·은행 내용을 유지해 옮깁니다.
-- 캐릭터 선택은 버튼 아래에 펼쳐지는 콤보박스입니다. 직업·종족 아이콘과 선택 강조를 제공하며, 8명을 넘으면 마우스 휠로 목록을 이동합니다.
-- 아이템을 하단의 실제 가방 아이콘에 끌어 놓거나, 들고 클릭하면 해당 가방에 넣습니다. 게임의 기본 이동 함수를 우선 사용하고, 꽉 찼거나 넣을 수 없는 아이템은 커서에 남깁니다. 장착 가방 교체도 유지합니다.
-- 시세 화면 왼쪽에서 경매장 아이템 분류와 하위 분류를 선택합니다. 하위 분류 이름과 번호는 클라이언트 API를 이용하며, 검색어와 함께 적용됩니다.
-- 분류 필터도 한 번에 최대 16개씩 가격 항목을 확인하며, 시세 조회 화면은 보이는 행만 그립니다.
-- 폴더를 덮어쓴 뒤 `/reload`하세요. 다른 캐릭터의 전체 이름은 해당 캐릭터로 로그인하면 갱신됩니다.
+### 저장 데이터
 
-## 0.1.7 재료 가방
+- `EzWoW_BagsDB`: 설정, 캐릭터별 가방·은행·골드, 서버·진영별 경매 시세.
+- 시세는 즉시구매 가격을 수량으로 나눈 **최저 단가**와 수집 시각입니다. 현재 살 수 있는 가격을 보장하지 않습니다.
+- 전문 기술 용도는 EzWoW - Profession Recipes의 포에버 제조법 데이터에서 뽑은 재료 529종입니다(따로 설치할 필요 없음).
 
-- 클라이언트가 재료 가방 칸을 제공하면 가방 내용·하단의 실제 장착 아이콘·빈 칸 수·캐릭터 저장 기록에 포함합니다.
-- 재료 가방의 빈 칸은 일반 가방과 구분해 특수 빈 칸 합계에 넣습니다.
-- 재료 가방 아이콘을 눌러 통합 창을 열고, 교체할 재료 가방을 끌어 놓을 수 있습니다.
-- 이전 클라이언트에서 5번 칸이 은행 가방인 경우와 구분합니다. 클라이언트가 선언한 재료 가방 번호만 사용합니다.
+---
 
-## 0.1.6 좁은 창과 캐릭터 표시
+## English
 
-- 가방 너비를 아이콘 크기·줄당 칸 수·분류 열 수에 맞춰 560–780 사이에서 계산합니다. 아이콘 30, 줄당 12칸, 분류 2열에서는 586입니다. 기존 너비 850은 사용하지 않습니다.
-- 설정창 너비를 600에서 460으로 줄이고 선택 버튼·숫자 조절·분류 입력을 안쪽으로 옮겼습니다.
-- 분류 목록도 좁히고, 폭이 좁은 분류 머리글에서는 합계 금액을 둘째 줄에 표시합니다.
-- 캐릭터 선택은 독립된 한 줄을 사용해 캐릭터 이름과 서버명을 함께 표시합니다.
-- 캐릭터 앞에는 해당 캐릭터의 직업 아이콘과 성별에 맞는 종족 아이콘을 표시합니다. 다른 캐릭터의 정보도 저장해 사용합니다.
-- 이전 버전에서 저장한 다른 캐릭터의 직업·종족 정보가 없으면 임의의 아이콘을 대신 표시하지 않습니다. 해당 캐릭터로 한 번 접속하면 저장됩니다.
+### Overview
 
-## 0.1.5 실제 장착 가방 그림
+A bag addon that shows your bags and bank in one window, **grouped by category**. Icons carry a short **purpose label** (quest, BoE, recipe, or the professions that use a reagent), you can open **other characters' bags and banks** read-only, and saved **auction prices** appear in tooltips and category totals.
 
-- 최신 클라이언트에서 `C_Container.ContainerIDToInventoryID`를 사용하도록 수정했습니다. 전역 함수만 찾다가 실제 장착 아이콘 대신 기본 가방 그림이 표시되던 경우를 보완합니다.
-- 장착 칸의 실제 텍스처를 우선 사용하고, 필요하면 해당 가방 아이템 링크에서 그림을 가져옵니다.
-- 현재 캐릭터는 실제 장착 그림을 우선 갱신하고, 다른 캐릭터는 저장된 해당 캐릭터의 가방 그림을 사용합니다.
-- 가방 교체에 따른 장비 변경 이벤트도 반영합니다. 배낭·열쇠고리는 전용 아이콘을 유지합니다.
+### Installation
 
-## 0.1.4 화면·아이콘·금액 표시
+1. Copy the `EzWoW-Bags` folder into `Interface/AddOns/` (final path `Interface/AddOns/EzWoW-Bags/EzWoW-Bags.toc`).
+2. Enable it in the **AddOns** list on the character select screen. Turn off other bag replacement addons.
+3. Press **B** or a bag button to open the window.
 
-- 애드온 목록의 `EzWoW` 카테고리에 등록하고 전용 아이콘을 지정했습니다.
-- 다른 EzWoW 아이콘과 같은 둥근 이중 테두리·어두운 바탕을 사용하고, 가방 문양과 호박색 강조색으로 구분합니다.
-- 창·설정·버튼·머리글의 바탕과 테두리를 EzWoW 공통 테마의 색상으로 맞췄습니다.
-- 가방·은행·시세의 선택 탭에 채운 배경, 밝은 글자, 체크 표시와 굵은 밑줄을 표시합니다. 마우스가 나가도 선택 표시를 유지합니다.
-- 상단 탭·설정·캐릭터·수집 버튼과 분류 버튼·머리글 앞에 해당 아이콘을 추가했습니다.
-- 창 제목에도 현재 가방·은행·시세 화면을 표시합니다.
-- 하단의 텍스트 가방 버튼을 실제 장착 가방 아이콘, 배낭 아이콘, 열쇠 아이콘으로 바꿨습니다. 빈 칸 수를 아이콘 위에 표시하고 마우스를 올리면 전체 칸 수를 보여줍니다.
-- 다른 캐릭터의 가방 아이콘은 해당 캐릭터에서 저장한 이미지를 사용하며 현재 캐릭터의 장비 이미지를 대신 표시하지 않습니다.
-- 모든 Bags 금액 표시를 숫자와 금·은·동 동전 아이콘으로 통일했습니다. 0골드는 생략하고 은화·동화는 0도 표시합니다.
-- 시세 목록에서 가격을 오른쪽에 정렬하고 수집 시각을 아이템 이름 아래에 표시합니다.
-- 이전 성능 수정과 Tooltip 가격 공유·수집 담당 전환을 유지합니다.
+### How to use
 
-## 0.1.3 시세 화면 멈춤 수정
+| Part | Description |
+|---|---|
+| Top tabs | Switch between **Bags · Bank · Prices**. |
+| Character picker | Pick another character on the same realm to see its last saved bags and bank, **read only**. A bank is saved once you open it on that character. |
+| Search | Name, type or purpose. Supports `ilvl>=50`, `rarity=rare`, `AND / OR / NOT`, brackets and quotes. |
+| Category list (left) | Click to show only that category; right-click for its menu; drop an item on a custom category to put it there. |
+| Category header | Click to collapse. Right-click: pin · hide · disable, custom category order/search/delete, move to bank · mail · trade · vendor. Shows a total (≈) for items with a known price. |
+| Items | Left-click picks up, **right-click uses** (potions, food, Hearthstone — also in combat), Shift-click links or splits. Works on your current character's real bags and an open bank. |
+| Bag icons (bottom) | Keyring → reagent bag → bags 4·3·2·1 → backpack, with free slot counts. Drop an item on a bag to put it there. |
+| New ✓ | Clears the green dot on items received this session. |
+| Prices tab | **Full scan** (whole auction house) or **Scan bag items**. The auction house must be open. Filter by item class on the left. |
 
-- 시세마다 버튼을 생성하던 방식을 바꿔 현재 화면에 보이는 행만 재사용합니다. 전체 목록은 그대로 스크롤할 수 있습니다.
-- 시세 탭에서는 가방 분류 모델을 다시 만들지 않습니다. 이름이 없는 항목도 한꺼번에 정보를 요청하지 않고, 보이는 행만 조회합니다.
-- 전체 목록은 아이템 ID 순으로 표시합니다. 이름·등급 등 검색은 입력을 잠깐 기다린 뒤 프레임당 최대 16개씩 나눠 검사합니다.
-- 시세를 조회하면서 발생하는 아이템 정보 이벤트가 가방 전체 재검사를 반복하지 않도록 분리했습니다.
-- 가방 아이템의 용도 확인 툴팁 결과를 재사용합니다.
-- Tooltip 가격 취합은 한 번에 최대 128항목씩 처리하고, 자료가 바뀌지 않았을 때 같은 출처 정보를 계속 새로 만들지 않습니다.
-- 시세 스크롤 때 목록 색인을 다시 만들거나 전체 항목을 정렬하지 않습니다.
-- Tooltip 활성 시 Bags 수집을 끄고 최신 가격을 양쪽에 취합하는 규칙은 유지합니다.
+- Tooltips show which professions use the item, the auction unit price and when it was seen, and how many each character on the realm has in bags and bank.
+- With EzWoW - Tooltip enabled, Tooltip collects prices and Bags shares them (Tooltip also shows the price line).
 
-2만 건 가격 목록의 열기·스크롤과 5천 건의 공유 자료 취합을 모의 환경에서 검증했습니다. 실제 게임 프레임 속도는 아직 측정하지 못했습니다.
+### Settings window (`/ezbags settings`)
 
-## 0.1.2 시세 공유와 수집 수정
+| Option | Default |
+|---|---|
+| Language (automatic + 8 languages) | Automatic |
+| Replace default bags (after login or `/reload`) | On |
+| Combine stacks · Purpose labels · Equipment levels | On |
+| Individual free slots · New item category | Off |
+| View: Sections · Grid · List | Sections |
+| Item sorting: Name · Quality / Category sorting: Name · Size | Name · Name |
+| Items per row (total) 6–20 · Category columns 1–3 | 12 · 2 |
+| Icon size 28–56 · Window scale 0.65–1.4 · Opacity 0.4–1 | 30 · 1 · 0.96 |
+| Restore categories · Reset position | - |
+| New custom category: name + search (leave the search empty to assign items by dragging) | - |
 
-- Tooltip이 켜져 있으면 Bags의 직접 수집을 끕니다. 수집 버튼도 비활성화하며 화면에 Tooltip 공유 상태를 표시합니다.
-- Tooltip을 끄고 `/reload`하거나 다시 접속하면 Bags가 직접 수집합니다.
-- Tooltip의 가격 저장소와 Bags 기록을 주기적으로 취합합니다. 같은 아이템은 각 기록의 수집 시각을 비교해 최신 값을 양쪽에 반영합니다.
-- Tooltip의 최근 가격은 경매장을 닫은 상태에서도 Bags 시세 목록에 표시됩니다. Bags가 직접 수집해 둔 더 최근 기록은 Tooltip을 다시 켰을 때 역으로 공유됩니다.
-- 수집 시각을 현재 시각으로 바꾸지 않습니다. 시간이 없는 기록은 시간이 없는 상태로 보존하고, 이미 시간이 있는 최신 기록을 덮어쓰지 않습니다.
-- 공유 기록에는 서버·진영 식별용 보조 정보를 붙여 이미 구분된 다른 서버의 기록이 섞이지 않도록 합니다.
-- Tooltip 사용 중에는 가방이 추가하는 경매 가격 툴팁 문구를 생략해 중복을 줄였습니다. 캐릭터별 보유량은 계속 표시합니다.
-- 매물 한 건이 없거나 읽기 오류가 나도 나머지 결과를 처리합니다. 누락 항목은 세 번 재시도하고, 끝내 읽지 못한 수를 알립니다.
-- 실패한 요청 때문에 애드온이 자체적으로 재시도를 15분간 막던 동작을 제거했습니다. 서버의 실제 대기 제한은 따릅니다.
-- 이미 클라이언트에 도착한 결과를 다시 읽고, 결과 이벤트가 누락돼도 응답을 확인합니다. 0건짜리 중간 응답을 수집 완료로 처리하지 않습니다.
-- 시세 탭에 대기·완료·시간 초과·공유 상태를 유지합니다. `/ezbags debug`로 수집 상태와 클라이언트에 남은 매물 수를 확인할 수 있습니다.
+### Slash commands (`/ezbags`, `/ezb`)
 
-## 0.1.1 수정 사항
+| Command | Description |
+|---|---|
+| `/ezbags` | Open/close the window |
+| `/ezbags bank` | Show the saved bank |
+| `/ezbags settings` | Settings |
+| `/ezbags scan` | Full price scan while the auction house is open |
+| `/ezbags debug` | Bank/auction API state and scan progress |
 
-- `INVTYPE_NON_EQUIP` 물품이 장비로 분류되고 장비 레벨이 표시되던 오류 수정
-- 즉시 아이템 정보 API를 통한 분류 번호 보완
-- 포에버의 열쇠고리 -1과 캐릭터 은행 보관함 6–14를 구분. 열쇠고리·가방 5를 은행에 넣던 오류 수정
-- 현대식 경매 API만 있는 클라이언트에서도 가방 아이템 시세 수집 지원
-- Tooltip·기본 경매 UI가 받은 전체 수집 결과를 함께 사용해 중복 요청 감소
-- 이미 받은 결과를 재사용할 때 수집 시각을 현재 시각으로 바꾸지 않도록 수정
-- 소유자 등 부가 정보가 덜 도착했더라도 정상적인 아이템 ID·수량·즉시구매 가격이 있으면 처리
-- 초기 가방 데이터가 늦게 도착할 때 기존 아이템을 새 아이템으로 처리하는 현상 완화
-- 새 아이템은 기본적으로 원래 분류를 유지하며 초록색 점으로 표시. 별도 분류는 설정에서 선택
-- 내용이 적을 때 창 높이를 줄이고 시세 탭에는 시세 목록과 상태만 표시
+### Saved data
 
-- `/ezbags` 또는 `/ezb`: 창 열기·닫기
-- `/ezbags bank`: 저장된 은행 보기
-- `/ezbags settings`: 설정
-- `/ezbags scan`: 경매장이 열린 상태에서 전체 시세 수집
-- B키·기본 가방 버튼: 통합 창. 기본 가방 대체 설정 변경은 다음 로그인 또는 `/reload`에 적용됩니다.
+- `EzWoW_BagsDB`: settings, every character's bags, bank and gold, auction prices per realm and faction.
+- A price is the lowest buyout per item and the time it was seen — not a guarantee of what you can buy now.
+- Profession use comes from the WoW Forever recipe data of EzWoW - Profession Recipes (529 reagents; no need to install it).
 
-## 포함된 기능
+---
 
-- 가방 0–4와 열쇠고리, 캐릭터 은행 보관함을 수집합니다. 번호는 클라이언트의 열거형을 사용하며 이전 클라이언트에서는 기존 은행 번호로 전환합니다.
-- 분류별 보기, 전체 그리드, 목록 보기를 제공합니다. 표시 정렬은 실제 아이템 위치를 바꾸지 않습니다.
-- 아이콘 크기, 줄당 최대 칸 수, 분류 열 수, 창 배율·투명도, 고정점·위치를 설정합니다.
-- 이름·등급 정렬, 분류 이름·크기 정렬, 분류 고정·접기·숨기기·끄기를 지원합니다.
-- 동일한 전체 아이템 링크와 귀속 상태의 묶음만 합산합니다. 클릭은 첫 실제 묶음을 대상으로 합니다.
-- 장비 레벨과 등급 테두리, 퀘스트·미귀속 착귀·제조법·전문기술 용도를 표시합니다.
-- 지역에 저장된 포에버 제조법 2,232개에서 재료 529종의 전문기술 용도를 추출했습니다. ProfessionRecipes를 별도로 설치할 필요는 없습니다.
-- 일반 가방과 특수 가방·열쇠고리의 빈 칸 수를 구분합니다. 설정에서 빈 칸을 각각 표시할 수 있습니다.
-- 새로 들어온 아이템 ID를 현재 접속 동안 추적합니다. 초록색 점을 표시하고 하단 체크 버튼으로 해제합니다. 별도 분류는 설정에서 켤 수 있습니다.
-- 같은 서버의 로그인한 캐릭터별 가방·은행·열쇠고리·골드를 저장합니다. 부캐 보기는 읽기 전용입니다.
-- 은행은 방문했을 때만 갱신합니다. 닫을 때의 빈 API 응답으로 저장 내용을 덮어쓰지 않습니다.
-- 툴팁에 캐릭터별 보유량, 은행 기록 시점, 경매 단가와 수집 시점을 표시합니다.
-- 현대식 경매에서는 전체 조회 결과 중 모든 물품 또는 가방에 있는 아이템 ID만 골라 저장합니다. 이전 경매 API에서는 정확한 이름 검색과 모든 결과 페이지 순회를 사용합니다.
-- 시세는 서버·진영별로 분리하며 즉시구매 가격을 수량으로 나눈 최저 단가만 기록합니다. 입찰가를 즉시구매 시세로 사용하지 않습니다.
-- 분류 머리글에는 시세가 저장된 물품의 추정 합계만 표시합니다. 가격을 모르는 아이템은 합계에 포함되지 않습니다.
-- 기본 은행 창을 유지하므로 기본 은행의 가방 구매 확인과 관리 기능도 이용할 수 있습니다.
+## Support / 후원
 
-## 검색과 사용자 분류
+If you find this addon useful, you can support its development.
 
-지원 필드: `name`, `type`, `id`, `count`, `ilvl`, `rarity`/`quality`.
-`AND`, `OR`, `NOT`, 괄호, 따옴표, 수치 비교를 지원하며 공백으로 나열한 조건은 AND로 처리합니다.
+애드온이 도움이 되셨다면 개발 후원으로 응원해 주세요.
 
-예시:
+[Buy Me a Coffee ☕](https://buymeacoffee.com/qqhrqqhr2)
 
-```text
-name=천
-ilvl >= 50 AND rarity=rare
-(rarity=epic OR rarity=rare) AND NOT name=방패
-name="Linen Cloth"
-id=2447
-```
-
-설정 맨 아래에서 이름과 검색식을 입력해 사용자 분류를 만듭니다.
-빈 검색식으로 만든 분류에는 가방에서 집어 든 아이템을 분류 머리글이나 왼쪽 목록에 끌어 놓으세요.
-아이템 ID로 지정한 분류가 검색식 분류보다 우선하고, 검색식은 사용자 분류 목록의 앞쪽부터 검사합니다.
-분류 우클릭 메뉴의 `↑ 사용자 분류`로 우선순위를 올리고, `검색 → 사용자 분류`로 현재 검색식을 적용할 수 있습니다.
-`− 사용자 분류`는 해당 규칙과 직접 지정을 지웁니다. 실제 아이템은 그대로입니다.
-숨기거나 끈 분류는 설정의 복원 버튼으로 다시 보이게 할 수 있습니다.
-
-## 아이템 조작
-
-현재 캐릭터의 실제 보관함에서만 왼쪽 클릭으로 집고 오른쪽 클릭으로 사용합니다.
-Shift 클릭은 게임의 아이템 링크 기능으로 넘깁니다.
-아래 가방 표시에는 교체할 가방을 끌어 놓을 수 있습니다. 빈 칸에 내려놓으려면 개별 빈 칸 표시를 켜세요.
-
-은행·우편·거래·상인이 열린 동안 분류 머리글을 우클릭하면 이동할 대상을 선택할 수 있습니다.
-대상을 고르면 하단에 다음 아이템이 표시되고 **클릭 한 번당 실제 묶음 하나**를 처리합니다.
-서버에서 가방 내용이 바뀌는 것을 확인한 뒤 다음 항목으로 넘어갑니다.
-우편 발송과 거래 수락은 게임 창에서 직접 완료합니다.
-상인 묶음 판매는 판매가가 있는 일반·하급 아이템으로 제한하며 퀘스트·직접 지정된 아이템은 제외합니다.
-전투 진입, 다른 캐릭터·보관함 선택, 관련 게임 창 닫기는 진행 중인 이동을 취소합니다.
-클릭 직전에 위치·전체 링크·수량·잠금 상태를 다시 검사합니다.
-
-## 시세 기록의 의미
-
-경매 조회는 경매장이 열려 있고 클라이언트가 조회를 허용할 때만 시작합니다.
-전체 조회의 대기 시간은 클라이언트 API와 서버의 허용 상태를 따릅니다.
-Tooltip이 켜져 있으면 수집은 Tooltip이 담당하고 Bags는 저장된 가격을 공유합니다. Bags 수집 버튼과 명령은 직접 조회하지 않습니다.
-전체 조회는 지원되는 복제 API 또는 기존 전체 검색 API를 사용합니다.
-가방 아이템 조회는 현대식 복제 API와 이전 `QueryAuctionItems` 계열에서 지원합니다. 현대식 클라이언트에선 전체 매물 조회를 공유한 뒤 가방 아이템만 골라 저장하므로, 아직 받은 결과가 없으면 전체 조회와 같은 대기 시간이 적용됩니다.
-Tooltip이 꺼져 있을 때 기본 경매 UI 등에서 전체 조회 결과를 받으면 같은 결과를 조용히 저장합니다.
-수집 도중 직접 경매 검색을 실행하면 기존 API 기반 수집을 중단합니다.
-일부 매물의 필드가 미완성이면 재시도 후 읽을 수 있는 결과를 저장하고 누락 수를 표시합니다. 전체 응답이 지연·취소되거나 유효한 가격이 하나도 없으면 기존 기록을 유지합니다.
-설치 전부터 클라이언트에 남아 있던 결과는 수집 시각을 알 수 없을 수 있습니다. 이런 경우 시간을 미확인으로 표시합니다.
-다시 발견되지 않은 아이템의 옛 가격도 기존 수집 시점과 함께 남습니다.
-따라서 기록은 현재 판매 가능 가격이나 실시간 시세를 보장하지 않습니다.
-
-## 언어와 검증 범위
-
-주요 탐색·분류 문구는 한국어·영어·독일어·프랑스어·스페인어·러시아어·중국어 간체·번체를 제공합니다.
-상세 설정 설명과 일부 전문기술 약칭은 한국어/영어이며 나머지는 영어로 표시됩니다.
-언어 목록에서 선택하면 화면 문구가 바로 갱신됩니다.
-
-Lua 5.1에서 모든 로드 파일의 문법과 로드 순서를 검증했고, 모의 게임 API로 데이터·검색·조작 차단·시세 수집·화면 전환을 시험했습니다.
-실제 포에버 게임 접속 검증은 아직 하지 않았습니다. 특히 B키 대체, 은행 가방 교체, 우편·거래 첨부, 경매 응답 형식은 게임에서 확인해야 합니다.
-
-개발 테스트는 형제 폴더 `bags-tools`의 `run_tests.py`로 실행합니다. Python의 `lupa` 패키지가 필요합니다.
-`build_reagents.py`는 현재 작업 폴더의 ProfessionRecipes 원본 데이터로 재료 색인을 다시 만듭니다.
-
-포에버 API 대조 자료: [보관함 번호](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_APIDocumentationGenerated/BagIndexConstantsDocumentation.lua), [은행 UI](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_UIPanels_Game/Camelot/BankFrame.lua), [경매 API](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_APIDocumentationGenerated/AuctionHouseDocumentation.lua).
-
-제조법 파생 데이터는 로컬 EzWoW-ProfessionRecipes의 GPL v2 자료를 사용했습니다. 이 배포물의 라이선스는 동봉한 LICENSE를 따릅니다.
+<a href="https://buymeacoffee.com/qqhrqqhr2"><img src="docs/images/bmc_qr.png" alt="Buy Me a Coffee 후원 QR 코드" width="220" /></a>

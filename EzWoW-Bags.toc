@@ -1,10 +1,30 @@
 ## Interface: 16001
+## X-Curse-Project-ID: 0
 ## Title: EzWoW - Bags
-## Notes: Categorized bags, character storage and cached auction prices for WoW Forever.
-## Notes-koKR: 통합 가방, 부캐 보관함, 전문기술 용도, 경매 시세 (/ezbags)
+## Title-enUS: EzWoW - Bags
+## Title-koKR: EzWoW - Bags
+## Title-deDE: EzWoW - Bags
+## Title-frFR: EzWoW - Bags
+## Title-esES: EzWoW - Bags
+## Title-esMX: EzWoW - Bags
+## Title-ruRU: EzWoW - Bags
+## Title-zhCN: EzWoW - Bags
+## Title-zhTW: EzWoW - Bags
+## Notes: Categorized bags, alt bags and banks, profession use labels and auction prices (/ezbags, /ezb)
+## Notes-enUS: Categorized bags, alt bags and banks, profession use labels and auction prices (/ezbags, /ezb)
+## Notes-koKR: 통합 가방, 부캐 가방·은행 보기, 전문 기술 용도, 경매장 시세 (/ezbags, /ezb)
+## Notes-deDE: Taschen nach Kategorien, Taschen und Banken der Twinks, Berufsverwendung und Auktionspreise (/ezbags, /ezb)
+## Notes-frFR: Sacs par catégories, sacs et banques des rerolls, usage par métier et prix de l'hôtel des ventes (/ezbags, /ezb)
+## Notes-esES: Bolsas por categorías, bolsas y bancos de alters, uso por profesión y precios de subasta (/ezbags, /ezb)
+## Notes-esMX: Bolsas por categorías, bolsas y bancos de alters, uso por profesión y precios de subasta (/ezbags, /ezb)
+## Notes-ruRU: Сумки по категориям, сумки и банки других персонажей, назначение для профессий и цены аукциона (/ezbags, /ezb)
+## Notes-zhCN: 分类背包、小号背包与银行、专业用途与拍卖行价格 (/ezbags, /ezb)
+## Notes-zhTW: 分類背包、分身背包與銀行、專業用途與拍賣場價格 (/ezbags, /ezb)
 ## Author: qqhrqqhr2
-## Version: 0.1.15
+## Version: 0.1.16
 ## Category: EzWoW
+## X-License: GPL-2.0
+## X-Website: https://github.com/qqhrqqhr2/EzWoW-Bags
 ## IconTexture: Interface\AddOns\EzWoW-Bags\Media\Icon
 ## SavedVariables: EzWoW_BagsDB
 ## OptionalDeps: EzWoW-ProfessionRecipes, EzWoW-Tooltip
@@ -21,5 +41,6 @@ Modules\Auction.lua
 Modules\PriceCatalog.lua
 UI\Widgets.lua
 UI\Window.lua
+UI\LanguageDropdown.lua
 UI\Options.lua
 Core\Events.lua

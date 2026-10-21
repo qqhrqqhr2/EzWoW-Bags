@@ -1,6 +1,84 @@
 local _, ns = ...
 local UI, API = ns.UI, ns.API
 local items, headers, sidebar, bagButtons = {}, {}, {}, {}
+-- Live bag/bank slots use Blizzard's secure item button so right-click can use potions,
+-- food and other items (also in combat). It sits invisibly on top of the drawn slot.
+local secureSlots, holders, secureCount = {}, {}, 0
+local function bagHolder(bag)
+    local h = holders[bag]
+    if not h then
+        h = CreateFrame("Frame", nil, ns.content); h:SetID(bag); h:SetAllPoints(ns.content)
+        holders[bag] = h
+    end
+    return h
+end
+local function hideRegion(region)
+    if type(region) == "table" and region.SetAlpha then region:SetAlpha(0) end
+end
+local function secureExtras(self)
+    local e = self.visual and self.visual.entry
+    if e and e.sources and #e.sources > 1 then
+        GameTooltip:AddLine("Σ " .. e.count .. " · " .. string.format(ns.Text("stacks"), #e.sources), .65, .72, .78)
+        GameTooltip:Show()
+    end
+end
+local function secureSlot(bag, slot)
+    local key = bag .. ":" .. slot
+    local b = secureSlots[key]
+    if b ~= nil then return b or nil end
+    secureCount = secureCount + 1
+    local name = "EzWoWBagsSlot" .. secureCount
+    local ok, button = pcall(CreateFrame, "ItemButton", name, bagHolder(bag), "ContainerFrameItemButtonTemplate")
+    if not ok or not button then ok, button = pcall(CreateFrame, "Button", name, bagHolder(bag), "ContainerFrameItemButtonTemplate") end
+    if not ok or not button then secureSlots[key] = false; return nil end
+    button:SetID(slot)
+    for _, region in ipairs({ button.icon, button.IconBorder, button.IconOverlay, button.IconOverlay2, button.Count, button.Stock,
+        button.searchOverlay, button.ItemContextOverlay, button.NewItemTexture, button.BattlepayItemTexture, button.JunkIcon,
+        button.UpgradeIcon, button.IconQuestTexture, button.ExtendedSlot, button.ItemSlotBackground, button.BagIndicator,
+        _G[name .. "IconTexture"], _G[name .. "Count"], _G[name .. "IconQuestTexture"] }) do hideRegion(region) end
+    if button.GetNormalTexture then hideRegion(button:GetNormalTexture()) end
+    local mixin = ContainerFrameItemButtonMixin
+    local update = button.UpdateTooltip or (mixin and mixin.OnUpdate)
+    if update then
+        button.UpdateTooltip = function(self) update(self); secureExtras(self) end
+    end
+    button:HookScript("OnEnter", secureExtras)
+    secureSlots[key] = button
+    return button
+end
+local function attachSecure(visual, e)
+    local source = e and (e.sources and e.sources[1] or e)
+    local b = source and source.bag and source.slot and API.UsableSnapshot() and secureSlot(source.bag, source.slot)
+    if visual.secure and visual.secure ~= b then
+        if visual.secure.visual == visual then visual.secure.visual = nil end
+        visual.secure = nil
+    end
+    visual:EnableMouse(not b)
+    if not b then return end
+    if b.visual and b.visual ~= visual and b.visual.secure == b then b.visual.secure = nil; b.visual:EnableMouse(true) end
+    b.visual, visual.secure = visual, b
+    b:ClearAllPoints(); b:SetAllPoints(visual)
+    b:SetFrameLevel(visual:GetFrameLevel() + 4)
+    local cooldown = b.Cooldown or _G[b:GetName() .. "Cooldown"]
+    if cooldown and not e.empty then
+        local fn = API.Container("GetContainerItemCooldown")
+        local start, duration, enable = 0, 0, 0
+        if fn then start, duration, enable = fn(source.bag, source.slot) end
+        if CooldownFrame_Set then CooldownFrame_Set(cooldown, start or 0, duration or 0, enable)
+        elseif cooldown.SetCooldown and (duration or 0) > 0 then cooldown:SetCooldown(start, duration) end
+    elseif cooldown and cooldown.Clear then cooldown:Clear() end
+    b:Show()
+end
+-- Buttons stay shown between redraws (hiding them would close an open stack-split box).
+local function hideUnusedSecure()
+    for _, b in pairs(secureSlots) do
+        if b and b:IsShown() and not (b.visual and b.visual:IsShown() and b.visual.secure == b) then
+            b:Hide()
+            if b.visual and b.visual.secure == b then b.visual.secure = nil end
+            b.visual = nil
+        end
+    end
+end
 local function stamp(value)
     return value and date("%m-%d %H:%M", value) or "—"
 end
@@ -102,6 +180,7 @@ local function renderItem(e, index, x, y, width, height, list)
     b.name:ClearAllPoints(); b.name:SetPoint("LEFT", height + 6, 0)
     b.money:SetText(""); b.priceAge:Hide()
     b:Show()
+    attachSecure(b, e)
 end
 local function renderHeader(section, index, x, y, width)
     local b = headers[index]
@@ -432,6 +511,7 @@ function ns.Render()
         end
     end
     if ns.content:GetHeight() ~= math.max(1, h + 12) then ns.content:SetHeight(math.max(1, h + 12)) end
+    hideUnusedSecure()
     f.emptyMessage:SetShown(n == 0)
     if n == 0 then
         f.emptyMessage:SetText(prices and (ns.T("prices") .. ": 0\n\n" .. (shared and ns.Text("ahShared") or ns.Auction.status or (job and (ns.T("scan") .. " …") or ns.Text("ahClosed")))) or (err and ns.Text("queryError") .. err or ns.T("empty")))

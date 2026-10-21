@@ -1,9 +1,6 @@
 local _, ns = ...
 local UI = ns.UI
-local function optionLabel(ko, en)
-    local lang = ns.cfg.language
-    return (lang == "koKR" or (lang == "auto" and GetLocale() == "koKR")) and ko or en
-end
+local optionLabel = function(ko, en) return ns.Lang(ko, en) end
 local languageNames = { koKR = "한국어", enUS = "English", deDE = "Deutsch", frFR = "Français",
     esES = "Español", ruRU = "Русский", zhCN = "简体中文", zhTW = "繁體中文" }
 local function languageName(value)
@@ -19,37 +16,12 @@ function ns.SetLanguage(value)
     if not valid then return end
     ns.cfg.language = value
     ns.PriceCatalog.current = nil
-    if ns.languageCombo then ns.languageCombo:Hide() end
     if ns.menu then ns.menu:Hide() end
     if ns.characterCombo then ns.characterCombo:Hide() end
     ns.UpdateOptions(); ns.Refresh()
+    if ns.options and ns.options.language then ns.LanguageDropdown.Refresh(ns.options.language) end
 end
-function ns.LanguageMenu()
-    local menu, button = ns.languageCombo, ns.options.language
-    if menu and menu:IsShown() then menu:Hide(); return end
-    if not menu then
-        menu = UI.Frame("Frame", "EzWoWBagsLanguageCombo", ns.options); ns.languageCombo = menu
-        UI.Surface(menu); menu:SetFrameStrata("FULLSCREEN_DIALOG"); menu:EnableMouse(true)
-        menu.buttons = {}
-        pcall(menu.RegisterEvent, menu, "GLOBAL_MOUSE_DOWN")
-        menu:SetScript("OnEvent", function(self)
-            if self:IsShown() and MouseIsOver and not MouseIsOver(self) and not MouseIsOver(button) then self:Hide() end
-        end)
-        UISpecialFrames[#UISpecialFrames + 1] = "EzWoWBagsLanguageCombo"
-    end
-    menu:ClearAllPoints(); menu:SetPoint("TOPLEFT", button, "BOTTOMLEFT", 0, -2)
-    menu:SetSize(button:GetWidth(), #ns.languages * 24 + 8)
-    for i, value in ipairs(ns.languages) do
-        local b = menu.buttons[i]
-        if not b then
-            b = UI.Button(menu, "", button:GetWidth() - 8, function(self) ns.SetLanguage(self.value) end)
-            b:SetPoint("TOPLEFT", 4, -4 - (i - 1) * 24); b:SetHeight(24); menu.buttons[i] = b
-        end
-        b.value = value; b.text:SetText(languageName(value)); b.text:SetJustifyH("LEFT")
-        UI.Selected(b, ns.cfg.language == value)
-    end
-    menu:Show()
-end
+local comboColors = { bg = UI.Theme.bg, border = UI.Theme.border, accent = UI.Theme.accent, text = UI.Theme.text }
 function ns.ToggleOptions()
     if ns.options then ns.UpdateOptions(); ns.options:SetShown(not ns.options:IsShown()); return end
     local f = UI.Frame("Frame", "EzWoWBagsOptions", UIParent); ns.options = f
@@ -57,7 +29,6 @@ function ns.ToggleOptions()
     f:SetSize(400, 488); f:SetPoint("CENTER"); f:SetFrameStrata("DIALOG"); UI.Surface(f)
     f:SetClampedToScreen(true); f:SetMovable(true); f:EnableMouse(true); f:RegisterForDrag("LeftButton")
     f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
-    f:SetScript("OnHide", function() if ns.languageCombo then ns.languageCombo:Hide() end end)
     UISpecialFrames[#UISpecialFrames + 1] = "EzWoWBagsOptions"
     local function bind(update) f.bindings[#f.bindings + 1] = update end
     local function label(ko, en, x, y, width)
@@ -70,8 +41,17 @@ function ns.ToggleOptions()
     bind(function() title:SetText("EzWoW - Bags / " .. ns.T("settings")) end)
     local close = UI.CloseButton(f, function() f:Hide() end)
     f.languageLabel = label("언어", "Language", 18, 54)
-    f.language = UI.Button(f, "", 212, function() ns.LanguageMenu() end)
+    f.language = UI.Button(f, "", 212, nil)
     f.language:SetPoint("TOPLEFT", 170, -48)
+    local languageItems = {}
+    for i, value in ipairs(ns.languages) do
+        languageItems[i] = { value = value, text = function() return languageName(value) end }
+    end
+    ns.LanguageDropdown.Attach(f.language, {
+        items = languageItems, colors = comboColors, window = f,
+        get = function() return ns.cfg.language end,
+        set = function(value) ns.SetLanguage(value) end,
+    })
     bind(function() f.language.text:SetText(languageName(ns.cfg.language) .. "  ▾") end)
     local function check(key, ko, en, index, hintKo, hintEn)
         local b = UI.Check(f, "", ns.cfg[key], function(value) ns.cfg[key] = value; ns.Refresh() end)
@@ -95,13 +75,18 @@ function ns.ToggleOptions()
     local y = 162
     local function cycle(key, ko, en, values)
         label(ko, en, 18, y + 6, 192)
-        local b = UI.Button(f, "", 162, function()
-            local index = 1
-            for i, value in ipairs(values) do if value == ns.cfg[key] then index = i % #values + 1; break end end
-            ns.cfg[key] = values[index]; ns.UpdateOptions(); ns.Refresh()
-        end)
+        local b = UI.Button(f, "", 162, nil)
         b:SetPoint("TOPLEFT", 220, -y); f.controls[key] = b
-        bind(function() b.text:SetText(ns.T(tostring(ns.cfg[key]))) end)
+        local choices = {}
+        for i, value in ipairs(values) do choices[i] = { value = value, text = function() return ns.T(value) end } end
+        local list = ns.LanguageDropdown.Attach(b, {
+            items = choices, colors = comboColors, window = f,
+            get = function() return ns.cfg[key] end,
+            set = function(value) ns.cfg[key] = value; ns.UpdateOptions(); ns.Refresh() end,
+        })
+        -- the shared combo marks language boxes with .languageList; this one is a plain choice box
+        b.languageList, b.choiceList = nil, list
+        bind(function() b.text:SetText(ns.T(tostring(ns.cfg[key])) .. "  ▾") end)
         y = y + 26
     end
     cycle("view", "보기", "View", { "sections", "grid", "list" })

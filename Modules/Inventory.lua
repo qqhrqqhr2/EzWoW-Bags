@@ -3,18 +3,26 @@ local API = ns.API
 local scanTooltip
 local tooltipCache = {}
 ns.waitingInventory = {}
+-- Short profession names: { koKR, enUS, deDE, frFR, esES, ruRU, zhCN, zhTW }
 ns.professions = {
-    [171] = { "연금", "Alchemy" }, [164] = { "대장", "Smithing" },
-    [165] = { "가죽", "Leather" }, [197] = { "재봉", "Tailoring" },
-    [202] = { "기공", "Engineering" }, [333] = { "마부", "Enchanting" },
-    [185] = { "요리", "Cooking" }, [129] = { "응급", "First Aid" },
-    [186] = { "채광", "Mining" }, [755] = { "보석", "Jewels" },
-    [182] = { "약초", "Herbalism" }, [356] = { "낚시", "Fishing" }, [393] = { "무두", "Skinning" },
+    [171] = { "연금", "Alchemy", "Alchemie", "Alchimie", "Alquimia", "Алхимия", "炼金", "鍊金" },
+    [164] = { "대장", "Smithing", "Schmied", "Forge", "Herrería", "Кузнечное", "锻造", "鍛造" },
+    [165] = { "가죽", "Leather", "Leder", "Cuir", "Peletería", "Кожевничество", "制皮", "製皮" },
+    [197] = { "재봉", "Tailoring", "Schneiderei", "Couture", "Sastrería", "Портняжное", "裁缝", "裁縫" },
+    [202] = { "기공", "Engineering", "Ingenieur", "Ingénierie", "Ingeniería", "Инженерия", "工程", "工程" },
+    [333] = { "마부", "Enchanting", "Verzauberkunst", "Enchantement", "Encantamiento", "Наложение чар", "附魔", "附魔" },
+    [185] = { "요리", "Cooking", "Kochkunst", "Cuisine", "Cocina", "Кулинария", "烹饪", "烹飪" },
+    [129] = { "응급", "First Aid", "Erste Hilfe", "Secourisme", "Primeros auxilios", "Первая помощь", "急救", "急救" },
+    [186] = { "채광", "Mining", "Bergbau", "Minage", "Minería", "Горное дело", "采矿", "採礦" },
+    [755] = { "보석", "Jewels", "Juwelier", "Joaillerie", "Joyería", "Ювелирное", "珠宝", "珠寶" },
+    [182] = { "약초", "Herbalism", "Kräuterkunde", "Herboristerie", "Herboristería", "Травничество", "草药", "草藥" },
+    [356] = { "낚시", "Fishing", "Angeln", "Pêche", "Pesca", "Рыбная ловля", "钓鱼", "釣魚" },
+    [393] = { "무두", "Skinning", "Kürschnerei", "Dépeçage", "Desuello", "Снятие шкур", "剥皮", "剝皮" },
 }
 function ns.ProfessionText(id)
     local row = ns.professions[id]
     if not row then return tostring(id) end
-    return row[(ns.cfg.language == "koKR" or (ns.cfg.language == "auto" and GetLocale() == "koKR")) and 1 or 2]
+    return row[ns.LangIndex()] or row[2]
 end
 function ns.Enrich(e)
     local name, link, quality, level, _, itemType, subType, _, equipLoc, icon, sellPrice, classID, subClassID, bindType = API.Info(e.link or e.id)
