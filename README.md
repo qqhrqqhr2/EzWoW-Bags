@@ -163,4 +163,4 @@ If you find this addon useful, you can support its development.
 
 [Buy Me a Coffee ☕](https://buymeacoffee.com/qqhrqqhr2)
 
-<a href="https://buymeacoffee.com/qqhrqqhr2"><img src="https://raw.githubusercontent.com/qqhrqqhr2/EzWoW-Bags/master/docs/images/bmc_qr.png" alt="Buy Me a Coffee 후원 QR 코드" width="220" /></a>
+<a href="https://buymeacoffee.com/qqhrqqhr2"><img src="https://raw.githubusercontent.com/qqhrqqhr2/EzWoW-Bags/master/docs/images/bmc_qr_160.png" alt="Buy Me a Coffee 후원 QR 코드" width="160" /></a>
