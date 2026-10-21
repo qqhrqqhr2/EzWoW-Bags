@@ -38,7 +38,6 @@
 - 각 장착 가방은 자기 빈 칸 수를 표시합니다. 열쇠고리는 기본 UI처럼 숫자 오버레이 없이 표시하며 툴팁에서 빈 칸/전체 칸을 확인합니다.
 - 재료 가방과 탄약통·영혼 주머니 같은 특수 가방을 구분하고, 빈 칸 계산은 컨테이너 API의 저장 값을 우선 사용합니다. 은행과 부캐 조회는 해당 보관함의 저장 정보만 사용합니다.
 - 열쇠고리는 기본 UI의 키링 아틀라스 또는 기본 키링 텍스처, 배낭은 포에버 기본 배낭 텍스처를 사용합니다.
-- 기준 자료: [기본 배낭의 빈 칸 계산](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_MainMenuBarBagButtons/Shared/MainMenuBarBagButtons.lua), [포에버 가방 배치](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_MainMenuBarBagButtons/Camelot/MainMenuBarBagButtons.xml).
 - 폴더를 덮어쓴 뒤 `/reload`하세요.
 
 ## v0.1.13 — EzWoW 스타일·아이콘 점검
