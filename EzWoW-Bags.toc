@@ -21,7 +21,7 @@
 ## Notes-zhCN: 分类背包、小号背包与银行、专业用途与拍卖行价格 (/ezbags, /ezb)
 ## Notes-zhTW: 分類背包、分身背包與銀行、專業用途與拍賣場價格 (/ezbags, /ezb)
 ## Author: qqhrqqhr2
-## Version: 0.1.16
+## Version: 0.1.17
 ## Category: EzWoW
 ## X-License: GPL-2.0
 ## X-Website: https://github.com/qqhrqqhr2/EzWoW-Bags
