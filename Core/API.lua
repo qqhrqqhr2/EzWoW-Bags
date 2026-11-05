@@ -63,9 +63,18 @@ function API.ModernBank()
     return Enum and Enum.BagIndex and Enum.BagIndex.CharacterBankTab_1 ~= nil
 end
 function API.BankType() return Enum and Enum.BankType and Enum.BankType.Character or 0 end
+-- Last character bank tab. Never extend into account (warband) bank tabs that may follow it.
+function API.LastBankTab()
+    local index, first = Enum.BagIndex, Enum.BagIndex.CharacterBankTab_1
+    local last, n = first, 2
+    while index["CharacterBankTab_" .. n] do last = index["CharacterBankTab_" .. n]; n = n + 1 end
+    if last == first then last = first + 8 end
+    if index.AccountBankTab_1 and index.AccountBankTab_1 > first and last >= index.AccountBankTab_1 then last = index.AccountBankTab_1 - 1 end
+    return last
+end
 function API.BagInventory(bag)
     if API.ModernBank() and bag >= Enum.BagIndex.CharacterBankTab_1 then
-        if bag > (Enum.BagIndex.CharacterBankTab_9 or Enum.BagIndex.CharacterBankTab_1 + 8) then return end
+        if bag > API.LastBankTab() then return end
         -- The native Camelot button converts the returned zero-based inventory slot to Lua's index.
         if C_Bank and C_Bank.BankBagTypeAndIDToInvSlot then
             local slot = C_Bank.BankBagTypeAndIDToInvSlot(API.BankType(), bag - Enum.BagIndex.CharacterBankTab_1 + 1)
@@ -112,7 +121,7 @@ function API.Bags(storage)
         if API.ModernBank() then
             local out = {}
             local first = Enum.BagIndex.CharacterBankTab_1
-            local last = Enum.BagIndex.CharacterBankTab_9 or first + 8
+            local last = API.LastBankTab()
             for id = first, last do out[#out + 1] = id end
             return out
         end

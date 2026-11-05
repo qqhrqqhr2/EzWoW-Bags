@@ -25,12 +25,18 @@ local function replaceBags()
 end
 local function tooltips()
     GameTooltip:HookScript("OnTooltipCleared", function(tip) tip.ezwowBagsID = nil end)
-    local function append(tip)
-        local _, link = tip:GetItem()
-        if link then ns.AddTooltipInfo(tip, tonumber(link:match("item:(%d+)"))) end
+    local function secret(value) return issecretvalue and issecretvalue(value) end
+    local function append(tip, data)
+        -- Mainline passes tooltip data; tip:GetItem() may be missing on this client.
+        local id = type(data) == "table" and not secret(data.id) and tonumber(data.id) or nil
+        if not id and type(tip.GetItem) == "function" then
+            local ok, _, link = pcall(tip.GetItem, tip)
+            if ok and type(link) == "string" and not secret(link) then id = tonumber(link:match("item:(%d+)")) end
+        end
+        if id then ns.AddTooltipInfo(tip, id) end
     end
     if TooltipDataProcessor and Enum and Enum.TooltipDataType then
-        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tip) if tip == GameTooltip then append(tip) end end)
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tip, data) if tip == GameTooltip then append(tip, data) end end)
     else pcall(GameTooltip.HookScript, GameTooltip, "OnTooltipSetItem", append) end
 end
 local function init()
@@ -47,11 +53,15 @@ local function init()
     replaceBags(); tooltips(); ns.Auction.InstallHook()
     SLASH_EZWOWBAGS1, SLASH_EZWOWBAGS2 = "/ezbags", "/ezb"
     SlashCmdList.EZWOWBAGS = function(text)
+        text = (text or ""):lower():match("^%s*(.-)%s*$")
         if text == "settings" then ns.ToggleOptions()
         elseif text == "bank" then ns.Show("bank")
         elseif text == "scan" then ns.Auction.Start("full")
         elseif text == "debug" then
-            ns.Print("0.1.16 · bank=" .. (ns.API.ModernBank() and "tabs" or "legacy") .. " · keyring=" .. ns.API.Keyring()
+            local getMeta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+            local ok, version = false, nil
+            if type(getMeta) == "function" then ok, version = pcall(getMeta, ns.name, "Version") end
+            ns.Print((ok and version or "?") .. " · bank=" .. (ns.API.ModernBank() and "tabs" or "legacy") .. " · keyring=" .. ns.API.Keyring()
                 .. " · legacyAH=" .. tostring(type(QueryAuctionItems) == "function")
                 .. " · replicate=" .. tostring(C_AuctionHouse and type(C_AuctionHouse.ReplicateItems) == "function" or false)
                 .. " · nativeRows=" .. ns.Auction.NativeCount())

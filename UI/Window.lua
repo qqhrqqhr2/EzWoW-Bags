@@ -17,7 +17,7 @@ local function hideRegion(region)
 end
 local function secureExtras(self)
     local e = self.visual and self.visual.entry
-    if e and e.sources and #e.sources > 1 then
+    if e and e.sources and #e.sources > 1 and GameTooltip:IsOwned(self) then
         GameTooltip:AddLine("Σ " .. e.count .. " · " .. string.format(ns.Text("stacks"), #e.sources), .65, .72, .78)
         GameTooltip:Show()
     end
@@ -37,11 +37,8 @@ local function secureSlot(bag, slot)
         button.UpgradeIcon, button.IconQuestTexture, button.ExtendedSlot, button.ItemSlotBackground, button.BagIndicator,
         _G[name .. "IconTexture"], _G[name .. "Count"], _G[name .. "IconQuestTexture"] }) do hideRegion(region) end
     if button.GetNormalTexture then hideRegion(button:GetNormalTexture()) end
-    local mixin = ContainerFrameItemButtonMixin
-    local update = button.UpdateTooltip or (mixin and mixin.OnUpdate)
-    if update then
-        button.UpdateTooltip = function(self) update(self); secureExtras(self) end
-    end
+    -- Post-hook only: the template's own tooltip refresh keeps running untouched.
+    if type(button.UpdateTooltip) == "function" then hooksecurefunc(button, "UpdateTooltip", secureExtras) end
     button:HookScript("OnEnter", secureExtras)
     secureSlots[key] = button
     return button
@@ -64,7 +61,11 @@ local function attachSecure(visual, e)
         local fn = API.Container("GetContainerItemCooldown")
         local start, duration, enable = 0, 0, 0
         if fn then start, duration, enable = fn(source.bag, source.slot) end
-        if CooldownFrame_Set then CooldownFrame_Set(cooldown, start or 0, duration or 0, enable)
+        local secret = issecretvalue and (issecretvalue(start) or issecretvalue(duration) or issecretvalue(enable))
+        if secret then
+            -- Secret cooldowns (combat) cannot be compared; let the widget handle them.
+            if cooldown.SetCooldown then pcall(cooldown.SetCooldown, cooldown, start, duration) end
+        elseif CooldownFrame_Set then CooldownFrame_Set(cooldown, start or 0, duration or 0, enable)
         elseif cooldown.SetCooldown and (duration or 0) > 0 then cooldown:SetCooldown(start, duration) end
     elseif cooldown and cooldown.Clear then cooldown:Clear() end
     b:Show()
@@ -124,7 +125,7 @@ local function enterItem(self)
     elseif e.link then GameTooltip:SetHyperlink(e.link) end
     ns.AddTooltipInfo(GameTooltip, e.id)
     if not API.UsableSnapshot() then GameTooltip:AddLine(ns.Text("readonly"), 1, .75, .35) end
-    if e.sources and #e.sources > 1 then GameTooltip:AddLine("Σ " .. e.count .. " · " .. #e.sources .. " stacks", .65, .72, .78) end
+    if e.sources and #e.sources > 1 then GameTooltip:AddLine("Σ " .. e.count .. " · " .. string.format(ns.Text("stacks"), #e.sources), .65, .72, .78) end
     GameTooltip:Show()
 end
 local function clickItem(self, mouse)
