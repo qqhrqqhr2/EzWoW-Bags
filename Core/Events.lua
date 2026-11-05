@@ -22,10 +22,11 @@ local function resolveBagHook(self)
     self:SetScript("OnUpdate", nil)
     local p = bagHook.pending; bagHook.pending = nil
     local w = ns.window
-    if not p or not ns.cfg.replace or not w or locked(w) then return end
+    -- ns.Show/ns.Hide wait for the end of combat when the window is protected.
+    if not p or not ns.cfg.replace or not w then return end
     if p.kind == "toggle" then
         bagHook.openedBy = nil
-        if p.wasShown then w:Hide() else ns.Show("bags") end
+        if p.wasShown then ns.Hide() else ns.Show("bags") end
     elseif p.kind == "open" then
         -- Same rule as the default UI: only an opener that found the bags closed may close them again.
         if not w:IsShown() then bagHook.openedBy = p.source; ns.Show("bags") end
@@ -33,7 +34,7 @@ local function resolveBagHook(self)
         local owner = bagHook.openedBy
         if p.source and owner ~= true and owner ~= p.source then return end
         bagHook.openedBy = nil
-        w:Hide()
+        ns.Hide()
     end
 end
 local resolver = CreateFrame("Frame")
@@ -181,7 +182,9 @@ frame:SetScript("OnEvent", function(_, event, arg, success)
     elseif event == "AUCTION_ITEM_LIST_UPDATE" then ns.Auction.Results(false)
     elseif event == "REPLICATE_ITEM_LIST_UPDATE" then ns.Auction.Results(true)
     elseif event == "PLAYER_REGEN_DISABLED" then ns.moveQueue = nil; ns.Refresh()
-    elseif event == "PLAYER_REGEN_ENABLED" then if bagHook.combatPending then ns.ApplyBagReplacement(true) end
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        if bagHook.combatPending then ns.ApplyBagReplacement(true) end
+        ns.AfterCombat()
     elseif event == "PLAYER_LOGOUT" then ns.ScanStorage("bags"); if ns.state.bank then ns.ScanStorage("bank") end
     elseif event == "MERCHANT_SHOW" then ns.state.merchant = true
     elseif event == "MERCHANT_CLOSED" then ns.state.merchant = false; ns.moveQueue = nil; ns.Refresh()

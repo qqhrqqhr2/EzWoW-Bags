@@ -46,6 +46,9 @@ WoW Forever (`Interface: 16001`) · `/ezbags`, `/ezb`
 
 - 시세 탭: **전체 시세 수집**(경매장 전체) 또는 **가방 아이템 조회**(가방에 있는 아이템만). 경매장이 열려 있어야 합니다. 왼쪽에서 아이템 종류로 거를 수 있습니다.
 - EzWoW - Tooltip이 켜져 있으면 시세 수집은 Tooltip이 맡고 Bags는 그 가격을 함께 씁니다(툴팁 시세 줄도 Tooltip이 표시).
+- EzWoW - Profession Recipes가 켜져 있으면 재료의 쓰임새는 그쪽 툴팁 목록이 보여 주고, Bags의 "재료:" 줄은 나오지 않습니다.
+- 아래쪽 **정리** 버튼: 게임의 가방 정리 기능으로 가방(은행 탭에서는 열린 은행)을 정리합니다. 전투 중에는 쓸 수 없습니다.
+- 전투 중에는 창의 배치·크기를 바꾸지 않고 개수·쿨다운만 갱신합니다. 전투 중에 연 창·닫은 창과 새 배치는 전투가 끝나면 적용됩니다.
 
 #### 분류 머리글로 옮기기
 
@@ -120,6 +123,9 @@ A bag addon that shows your bags and bank in one window, **grouped by category**
 
 - Prices tab: **Full scan** (whole auction house) or **Scan bag items**. The auction house must be open. Filter by item class on the left.
 - With EzWoW - Tooltip enabled, Tooltip collects prices and Bags shares them (Tooltip also shows the price line).
+- With EzWoW - Profession Recipes enabled, its tooltip list shows where a reagent is used and Bags leaves out its "Materials:" line.
+- **Sort** button (bottom): sorts your bags (or the open bank on the Bank tab) with the game's own sort. Not available in combat.
+- In combat the window keeps its layout and size and only updates counts and cooldowns; opening, closing and the new layout happen when combat ends.
 
 ### Settings window (`/ezbags settings`)
 

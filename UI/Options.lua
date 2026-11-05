@@ -152,6 +152,7 @@ function ns.ToggleOptions()
     end); restore:SetPoint("TOPLEFT", 20, -y)
     bind(function() restore.text:SetText(optionLabel("숨김·꺼진 분류 복원", "Restore categories")) end)
     local anchor = UI.Button(f, "", 186, function()
+        if ns.LayoutLocked() then ns.Print(ns.Text("combat")); return end
         ns.cfg.growUp = false; ns.window:ClearAllPoints()
         ns.window:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 40, -100)
         ns.ResizeWindow(ns.window:GetWidth(), ns.window:GetHeight())

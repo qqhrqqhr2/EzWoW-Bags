@@ -22,10 +22,21 @@ local function secureExtras(self)
         GameTooltip:Show()
     end
 end
+-- The secure item buttons make the window protected. In combat a protected frame can't be
+-- moved, resized, scaled, shown or hidden, so combat updates only change counts, icons and
+-- cooldowns, and the full layout runs again once combat ends.
+function ns.LayoutLocked()
+    local f = ns.window
+    if not f or not (InCombatLockdown and InCombatLockdown()) then return false end
+    if secureCount > 0 then return true end
+    return type(f.IsProtected) == "function" and f:IsProtected() and true or false
+end
 local function secureSlot(bag, slot)
     local key = bag .. ":" .. slot
     local b = secureSlots[key]
     if b ~= nil then return b or nil end
+    -- New secure buttons are only made out of combat; the next layout after combat adds them.
+    if API.InCombat() then ns.layoutPending = true; return nil end
     secureCount = secureCount + 1
     local name = "EzWoWBagsSlot" .. secureCount
     local ok, button = pcall(CreateFrame, "ItemButton", name, bagHolder(bag), "ContainerFrameItemButtonTemplate")
@@ -43,6 +54,20 @@ local function secureSlot(bag, slot)
     secureSlots[key] = button
     return button
 end
+local function updateCooldown(b, source, empty)
+    local cooldown = b.Cooldown or _G[b:GetName() .. "Cooldown"]
+    if cooldown and not empty then
+        local fn = API.Container("GetContainerItemCooldown")
+        local start, duration, enable = 0, 0, 0
+        if fn then start, duration, enable = fn(source.bag, source.slot) end
+        local secret = issecretvalue and (issecretvalue(start) or issecretvalue(duration) or issecretvalue(enable))
+        if secret then
+            -- Secret cooldowns (combat) cannot be compared; let the widget handle them.
+            if cooldown.SetCooldown then pcall(cooldown.SetCooldown, cooldown, start, duration) end
+        elseif CooldownFrame_Set then CooldownFrame_Set(cooldown, start or 0, duration or 0, enable)
+        elseif cooldown.SetCooldown and (duration or 0) > 0 then cooldown:SetCooldown(start, duration) end
+    elseif cooldown and cooldown.Clear then cooldown:Clear() end
+end
 local function attachSecure(visual, e)
     local source = e and (e.sources and e.sources[1] or e)
     local b = source and source.bag and source.slot and API.UsableSnapshot() and secureSlot(source.bag, source.slot)
@@ -56,18 +81,7 @@ local function attachSecure(visual, e)
     b.visual, visual.secure = visual, b
     b:ClearAllPoints(); b:SetAllPoints(visual)
     b:SetFrameLevel(visual:GetFrameLevel() + 4)
-    local cooldown = b.Cooldown or _G[b:GetName() .. "Cooldown"]
-    if cooldown and not e.empty then
-        local fn = API.Container("GetContainerItemCooldown")
-        local start, duration, enable = 0, 0, 0
-        if fn then start, duration, enable = fn(source.bag, source.slot) end
-        local secret = issecretvalue and (issecretvalue(start) or issecretvalue(duration) or issecretvalue(enable))
-        if secret then
-            -- Secret cooldowns (combat) cannot be compared; let the widget handle them.
-            if cooldown.SetCooldown then pcall(cooldown.SetCooldown, cooldown, start, duration) end
-        elseif CooldownFrame_Set then CooldownFrame_Set(cooldown, start or 0, duration or 0, enable)
-        elseif cooldown.SetCooldown and (duration or 0) > 0 then cooldown:SetCooldown(start, duration) end
-    elseif cooldown and cooldown.Clear then cooldown:Clear() end
+    updateCooldown(b, source, e.empty)
     b:Show()
 end
 -- Buttons stay shown between redraws (hiding them would close an open stack-split box).
@@ -99,12 +113,22 @@ function ns.ResizeWindow(width, height, scale)
     if f:GetWidth() ~= width then f:SetWidth(width) end
     if f:GetHeight() ~= height then f:SetHeight(height) end
 end
+-- The recipe addon of this suite lists where a reagent is used; then this line is left out.
+function ns.RecipeAddonShowsUses()
+    local pr = _G.EzWoW_ProfessionRecipes
+    if type(pr) ~= "table" then
+        local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded
+        if type(isLoaded) ~= "function" or not isLoaded("EzWoW-ProfessionRecipes") then return false end
+        return true
+    end
+    return not (type(pr.DB) == "table" and pr.DB.reagentTooltip == false)
+end
 function ns.AddTooltipInfo(tip, id)
     if not id or not ns.db or tip.ezwowBagsID == id then return end
     tip.ezwowBagsID = id
     local uses, names = ns.ReagentUses[id], {}
     for _, skill in ipairs(uses or {}) do names[#names + 1] = ns.ProfessionText(skill) end
-    if #names > 0 then tip:AddLine(ns.T("materials") .. ": " .. table.concat(names, ", "), .94, .72, .42, true) end
+    if #names > 0 and not ns.RecipeAddonShowsUses() then tip:AddLine(ns.T("materials") .. ": " .. table.concat(names, ", "), .94, .72, .42, true) end
     local price = ns.Price(id)
     if price and not ns.Auction.TooltipActive() then
         tip:AddDoubleLine(ns.T("prices") .. " / 1", ns.Money(price.unit), .94, .72, .42, 1, .82, .4)
@@ -152,11 +176,12 @@ local function itemButton(index)
     b.tag = UI.Label(b, "", 10); b.tag:SetPoint("TOPLEFT", 3, -3)
     b.tag:SetTextColor(.3, 1, .65)
     b.count = UI.Label(b, "", 12); b.count:SetPoint("BOTTOMRIGHT", -3, 3)
-    b.level = UI.Label(b, "", 10); b.level:SetPoint("BOTTOMLEFT", 3, 3)
+    -- item level sits at the top (stack counts are bottom-right) so the two never look alike
+    b.level = UI.Label(b, "", 10); b.level:SetPoint("TOPRIGHT", b.icon, "TOPRIGHT", -1, -1)
     b.name = UI.Label(b, ""); b.name:SetPoint("LEFT", b, "LEFT", 44, 0)
     b.money = UI.Label(b, "", 12); b.money:SetPoint("RIGHT", -10, 0); b.money:SetWidth(215); b.money:SetJustifyH("RIGHT")
     b.priceAge = UI.Label(b, "", 9); b.priceAge:SetTextColor(unpack(UI.Theme.muted))
-    b.fresh = UI.Label(b, "●", 10); b.fresh:SetPoint("TOPRIGHT", -2, -2); b.fresh:SetTextColor(.35, 1, .65)
+    b.fresh = UI.Label(b, "●", 10); b.fresh:SetPoint("BOTTOMLEFT", b.icon, "BOTTOMLEFT", 1, 0); b.fresh:SetTextColor(.35, 1, .65)
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp"); b:RegisterForDrag("LeftButton")
     b:SetScript("OnClick", clickItem)
     b:SetScript("OnDragStart", function(self) clickItem(self, "LeftButton") end)
@@ -216,13 +241,14 @@ function ns.CreateWindow()
     f:SetSize(850, 610); f:SetScale(ns.cfg.scale); f:SetPoint("CENTER"); f:SetFrameStrata("HIGH")
     f:SetClampedToScreen(true); f:SetMovable(true); f:EnableMouse(true); f:RegisterForDrag("LeftButton")
     UI.Surface(f)
-    f:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    f:SetScript("OnDragStart", function(self) if not ns.LayoutLocked() then self:StartMoving() end end)
     f:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
+        if ns.LayoutLocked() then ns.layoutPending = true; return end
         ns.ResizeWindow(self:GetWidth(), self:GetHeight())
     end)
     f.title = UI.Label(f, "EzWoW - Bags", 15); UI.Chrome(f, f.title)
-    local close = UI.CloseButton(f, function() f:Hide() end)
+    local close = UI.CloseButton(f, function() ns.Hide() end)
     local opts = UI.Button(f, ns.T("settings"), 80, function() ns.ToggleOptions() end); opts:SetPoint("RIGHT", close, "LEFT", -6, 0)
     f.optionsButton = opts
     f.character = UI.Button(f, "", 210, function() ns.CharacterMenu() end); f.character:SetPoint("TOPLEFT", 16, -101)
@@ -266,9 +292,14 @@ function ns.CreateWindow()
     f.buyBank = UI.Button(f, "+ " .. ns.T("bank"), 130, function()
         if ns.state.bank and not API.InCombat() and BuyBankSlot then BuyBankSlot() end
     end); f.buyBank:SetPoint("BOTTOMRIGHT", -16, 10)
+    f.sort = UI.Button(f, ns.Text("sort"), 90, function() ns.SortStorage() end); f.sort:SetPoint("BOTTOMRIGHT", -152, 10)
+    f.sort:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(ns.Text("sortHelp"), 1, 1, 1, true); GameTooltip:Show()
+    end)
+    f.sort:HookScript("OnLeave", function() GameTooltip:Hide() end)
     UI.SetIcon(f.scan, UI.icons.prices); UI.SetIcon(f.bagScan, UI.icons.bags); UI.SetIcon(f.stopScan, UI.icons.stop)
     UI.SetIcon(f.next, UI.icons.bags); UI.SetIcon(f.cancel, UI.icons.stop)
-    UI.SetIcon(f.clearNew, UI.icons.new); UI.SetIcon(f.buyBank, UI.icons.bank)
+    UI.SetIcon(f.clearNew, UI.icons.new); UI.SetIcon(f.buyBank, UI.icons.bank); UI.SetIcon(f.sort, UI.icons.bags)
     f:SetScript("OnHide", function() ns.moveQueue = nil; if ns.menu then ns.menu:Hide() end; GameTooltip:Hide() end)
     if UISpecialFrames then UISpecialFrames[#UISpecialFrames + 1] = "EzWoWBagsWindow" end
     f:Hide()
@@ -370,9 +401,72 @@ function ns.BagLayout()
     end
     return layout
 end
+-- Uses the game's own sort (bags, or the bank while it is open); out of combat only.
+local function sorter()
+    if not C_Container or ns.selected ~= ns.player or ns.mode == "prices" then return nil end
+    if ns.storage == "bags" then return C_Container.SortBags end
+    if ns.storage == "bank" and ns.state.bank then return C_Container.SortBankBags end
+    return nil
+end
+function ns.SortStorage()
+    local fn = sorter()
+    if type(fn) ~= "function" then return end
+    if API.InCombat() then ns.Print(ns.Text("combat")); return end
+    ns.moveQueue = nil
+    pcall(fn)
+end
+local function footerText(snapshot)
+    local char = ns.db.characters[ns.selected] or {}
+    local space = ns.FreeSpace(snapshot, ns.storage)
+    -- The game's own free count may leave profession bags out; then they are listed after it
+    -- instead of inside the brackets, so the numbers always add up.
+    local extra = {}
+    if space.reagent > 0 then extra[#extra + 1] = ns.T("materials") .. " " .. space.reagent end
+    if space.special > 0 then extra[#extra + 1] = ns.Text("special") .. " " .. space.special end
+    local freeText = ns.T("empty") .. ": " .. space.total
+    if #extra > 0 then
+        if space.total == space.general + space.reagent + space.special then
+            table.insert(extra, 1, ns.Text("general") .. " " .. space.general)
+            freeText = freeText .. " (" .. table.concat(extra, " · ") .. ")"
+        else
+            freeText = freeText .. " · " .. table.concat(extra, " · ")
+        end
+    end
+    if space.keys > 0 then freeText = freeText .. " · " .. ns.Text("keyring") .. " " .. space.keys end
+    return ns.Money(char.money) .. "    " .. freeText
+end
+-- Combat update: no anchors, sizes, scale, Show or Hide; counts, icons and cooldowns only.
+local function renderCombat(f)
+    ns.layoutPending = true
+    if ns.mode == "prices" then return end
+    f.footer:SetText(footerText(ns.Snapshot()))
+    if not API.UsableSnapshot() then return end
+    for _, b in ipairs(items) do
+        local e = b.entry
+        if b:IsShown() and e and not e.empty then
+            local total, locked = 0, false
+            for _, source in ipairs(e.sources or { e }) do
+                local live = source.bag and source.slot and API.Item(source.bag, source.slot)
+                if live and live.id == e.id then
+                    total = total + (live.count or 0)
+                    locked = locked or live.locked
+                end
+            end
+            e.count = total
+            b.count:SetText(total > 1 and total or "")
+            b.icon:SetAlpha(total == 0 and .18 or (locked and .45 or 1))
+            if b.secure then
+                local source = e.sources and e.sources[1] or e
+                updateCooldown(b.secure, source, total == 0)
+            end
+        end
+    end
+end
 function ns.Render()
     local f = ns.window
     if not f or not ns.cfg then return end
+    if ns.LayoutLocked() then renderCombat(f); return end
+    ns.layoutPending = false
     local layout = ns.BagLayout()
     local desiredWidth = layout.width
     ns.ResizeWindow(desiredWidth, f:GetHeight(), ns.cfg.scale)
@@ -411,15 +505,8 @@ function ns.Render()
     f.status:SetText(err and (ns.Text("queryError") .. err) or
         ((readOnly and ns.Text("readonly") .. " · " or "") .. ns.T(ns.storage) .. " · " .. stamp(snapshot and snapshot.time)))
     if not snapshot and ns.storage == "bank" then f.status:SetText(ns.Text("bankUnknown")) end
-    local char = ns.db.characters[ns.selected] or {}
     local free = #(snapshot and snapshot.free or {})
-    local space = ns.FreeSpace(snapshot, ns.storage)
-    local detail = { ns.Text("general") .. " " .. space.general }
-    if space.reagent > 0 then detail[#detail + 1] = ns.T("materials") .. " " .. space.reagent end
-    if space.special > 0 then detail[#detail + 1] = ns.Text("special") .. " " .. space.special end
-    local freeText = ns.T("empty") .. ": " .. space.total .. " (" .. table.concat(detail, " · ") .. ")"
-    if space.keys > 0 then freeText = freeText .. " · " .. ns.Text("keyring") .. " " .. space.keys end
-    f.footer:SetText(ns.Money(char.money) .. "    " .. freeText)
+    f.footer:SetText(footerText(snapshot))
     f.scan:SetShown(prices); f.bagScan:SetShown(prices); f.stopScan:SetShown(prices)
     local job = ns.Auction.job
     local shared = ns.Auction.TooltipActive()
@@ -434,6 +521,9 @@ function ns.Render()
         f.queue:SetText(ns.T("move") .. " → " .. q.target .. "  " .. q.index .. "/" .. #q.items .. "  " .. (e and e.name or ns.T("done")) .. (q.pending and " …" or ""))
     end
     f.clearNew:SetShown(ns.storage == "bags" and not prices)
+    f.sort.text:SetText(ns.Text("sort"))
+    local sortFn = sorter()
+    f.sort:SetShown(type(sortFn) == "function")
     local fullBank = GetNumBankSlots and select(2, GetNumBankSlots())
     f.buyBank:SetShown(not API.ModernBank() and ns.storage == "bank" and ns.selected == ns.player and ns.state.bank and not prices and not fullBank)
     if f.buyBank:IsShown() and GetBankSlotCost then f.buyBank.text:SetText("+ " .. ns.Money(GetBankSlotCost())) end
@@ -502,13 +592,17 @@ function ns.Render()
         end
         h = 0; for _, height in ipairs(heights) do h = math.max(h, height) end
         if ns.cfg.emptySlots then
-            for i, e in ipairs(snapshot and snapshot.free or {}) do
-                n = n + 1
-                local cols = ns.cfg.columns
-                renderItem(e, n, ((i - 1) % cols) * (size + gap), h + math.floor((i - 1) / cols) * (size + gap), size, size)
-                items[n]:SetScript("OnEnter", enterItem)
+            -- keyring slots only take keys, so they are not drawn as free space
+            local shown = 0
+            for _, e in ipairs(snapshot and snapshot.free or {}) do
+                if ns.BagKind(e, ns.storage) ~= "keys" then
+                    shown = shown + 1; n = n + 1
+                    local cols = ns.cfg.columns
+                    renderItem(e, n, ((shown - 1) % cols) * (size + gap), h + math.floor((shown - 1) / cols) * (size + gap), size, size)
+                    items[n]:SetScript("OnEnter", enterItem)
+                end
             end
-            h = h + math.ceil(free / ns.cfg.columns) * (size + gap)
+            h = h + math.ceil(shown / ns.cfg.columns) * (size + gap)
         end
     end
     if ns.content:GetHeight() ~= math.max(1, h + 12) then ns.content:SetHeight(math.max(1, h + 12)) end
@@ -521,12 +615,47 @@ function ns.Render()
     ns.ResizeWindow(desiredWidth, desiredHeight)
     if f.sideScroll:GetHeight() ~= math.max(100, desiredHeight - 258) then f.sideScroll:SetHeight(math.max(100, desiredHeight - 258)) end
 end
+-- Opening or closing the protected window waits for the end of combat.
 function ns.Show(storage)
     if not ns.window then return end
+    if ns.LayoutLocked() then
+        if ns.window:IsShown() then ns.combatVisibility = nil
+        else
+            if storage then ns.storage, ns.mode = storage, storage end
+            ns.combatVisibility = "show"
+        end
+        ns.layoutPending = true
+        return
+    end
     if storage then ns.storage, ns.mode = storage, storage end
+    ns.combatVisibility = nil
     ns.window:Show(); ns.Refresh()
+end
+function ns.Hide()
+    if not ns.window then return end
+    if ns.LayoutLocked() then
+        ns.combatVisibility = ns.window:IsShown() and "hide" or nil
+        return
+    end
+    ns.combatVisibility = nil
+    ns.window:Hide()
 end
 function ns.Toggle()
     if not ns.window then return end
-    if ns.window:IsShown() then ns.window:Hide() else ns.Show("bags") end
+    if ns.LayoutLocked() then
+        local willShow = ns.window:IsShown()
+        if ns.combatVisibility then willShow = ns.combatVisibility == "show" end
+        if willShow then ns.Hide() else ns.Show("bags") end
+        return
+    end
+    if ns.window:IsShown() then ns.Hide() else ns.Show("bags") end
+end
+-- After combat: open/close what was asked for, then redo the layout.
+function ns.AfterCombat()
+    local want = ns.combatVisibility
+    ns.combatVisibility = nil
+    if not ns.window or ns.LayoutLocked() then return end
+    if want == "hide" then ns.window:Hide()
+    elseif want == "show" then ns.window:Show() end
+    if ns.layoutPending or want == "show" then ns.layoutPending = false; ns.Refresh() end
 end
