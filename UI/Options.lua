@@ -70,7 +70,11 @@ function ns.ToggleOptions()
     y = y + 30
     local column = 0
     local function check(key, ko, en, hintKo, hintEn)
-        local b = UI.Check(f, "", ns.cfg[key], function(value) ns.cfg[key] = value; ns.Refresh() end)
+        local b = UI.Check(f, "", ns.cfg[key], function(value)
+            ns.cfg[key] = value
+            if key == "replace" and ns.ApplyBagReplacement then ns.ApplyBagReplacement() end
+            ns.Refresh()
+        end)
         b:SetPoint("TOPLEFT", column == 0 and 18 or 216, -y)
         b.label:SetWidth(166)
         f.controls[key] = b
@@ -85,7 +89,7 @@ function ns.ToggleOptions()
         if column == 0 then y = y + 26 end
     end
     local function endChecks() if column == 1 then column = 0; y = y + 26 end; y = y + 8 end
-    check("replace", "기본 가방 대체", "Replace default bags", "다음 로그인 또는 /reload 후 적용됩니다.", "Applies after login or /reload.")
+    check("replace", "기본 가방 대체", "Replace default bags", "B 키와 가방 버튼이 기본 가방 대신 이 창을 엽니다. 바로 적용됩니다.", "B and the bag buttons open this window instead of the default bags. Applies immediately.")
     check("merge", "묶음 합계 표시", "Combine stacks", "같은 아이템의 수량을 합칩니다. 클릭은 첫 묶음을 조작합니다.", "Combine identical item counts. Clicking acts on the first stack.")
     endChecks()
     section("아이콘 표시", "Item icons")

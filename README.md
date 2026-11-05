@@ -56,7 +56,7 @@ WoW Forever (`Interface: 16001`) · `/ezbags`, `/ezb`
 | 번호 | 항목 | 기본값 |
 |---|---|---|
 | ① | 언어 (자동 + 8개 언어) | 자동 |
-| ① | 기본 가방 대체 (다음 접속 또는 `/reload` 후 적용) | 켬 |
+| ① | 기본 가방 대체 (바로 적용) | 켬 |
 | ① | 묶음 합계 표시 | 켬 |
 | ② | 아이템 용도 · 장비 레벨 | 켬 |
 | ② | 빈 칸 개별 표시 · 새 아이템 분류 | 끔 |
@@ -126,7 +126,7 @@ A bag addon that shows your bags and bank in one window, **grouped by category**
 | No. | Option | Default |
 |---|---|---|
 | ① | Language (automatic + 8 languages) | Automatic |
-| ① | Replace default bags (after login or `/reload`) | On |
+| ① | Replace default bags (applies immediately) | On |
 | ① | Combine stacks | On |
 | ② | Purpose labels · Equipment levels | On |
 | ② | Individual free slots · New item category | Off |

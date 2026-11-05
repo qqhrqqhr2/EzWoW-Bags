@@ -3,25 +3,107 @@ local frame = CreateFrame("Frame")
 local events = { "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_LOGOUT", "BAG_UPDATE_DELAYED", "BAG_UPDATE", "ITEM_LOCK_CHANGED",
     "GET_ITEM_INFO_RECEIVED", "PLAYER_MONEY", "BANKFRAME_OPENED", "BANKFRAME_CLOSED", "PLAYERBANKSLOTS_CHANGED", "BAG_CONTAINER_UPDATE", "BANK_TABS_CHANGED",
     "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "AUCTION_ITEM_LIST_UPDATE", "REPLICATE_ITEM_LIST_UPDATE",
-    "MERCHANT_SHOW", "MERCHANT_CLOSED", "MAIL_SHOW", "MAIL_CLOSED", "TRADE_SHOW", "TRADE_CLOSED", "PLAYER_REGEN_DISABLED", "PLAYER_EQUIPMENT_CHANGED", "BAG_UPDATE_COOLDOWN" }
+    "MERCHANT_SHOW", "MERCHANT_CLOSED", "MAIL_SHOW", "MAIL_CLOSED", "TRADE_SHOW", "TRADE_CLOSED", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_EQUIPMENT_CHANGED", "BAG_UPDATE_COOLDOWN" }
 for _, event in ipairs(events) do pcall(frame.RegisterEvent, frame, event) end
+-- Default bag replacement. The Blizzard bag functions are never replaced (other default UI code
+-- calls them); they are post-hooked, and the default player bag frames hide themselves on show.
+-- Post-hooks of nested calls run before the outer one, so the hooks only record what happened and
+-- the last (outermost) call of the same frame decides once on the next update: B, Shift+B and
+-- the bag buttons toggle this window exactly once even when the default code opens bags internally.
+local bagHook = { pending = nil, openedBy = nil, combatPending = false }
+local function inCombat() return InCombatLockdown and InCombatLockdown() end
+local function locked(f) return inCombat() and type(f.IsProtected) == "function" and f:IsProtected() end
+local function frameToken(f)
+    if type(f) ~= "table" then return nil end
+    local name = type(f.GetName) == "function" and f:GetName()
+    return name or f
+end
+local function resolveBagHook(self)
+    self:SetScript("OnUpdate", nil)
+    local p = bagHook.pending; bagHook.pending = nil
+    local w = ns.window
+    if not p or not ns.cfg.replace or not w or locked(w) then return end
+    if p.kind == "toggle" then
+        bagHook.openedBy = nil
+        if p.wasShown then w:Hide() else ns.Show("bags") end
+    elseif p.kind == "open" then
+        -- Same rule as the default UI: only an opener that found the bags closed may close them again.
+        if not w:IsShown() then bagHook.openedBy = p.source; ns.Show("bags") end
+    elseif p.kind == "close" then
+        local owner = bagHook.openedBy
+        if p.source and owner ~= true and owner ~= p.source then return end
+        bagHook.openedBy = nil
+        w:Hide()
+    end
+end
+local resolver = CreateFrame("Frame")
+local function noteBagCall(kind, source)
+    if not ns.cfg.replace or not ns.window then return end
+    local p = bagHook.pending
+    if not p then
+        p = { wasShown = ns.window:IsShown() }; bagHook.pending = p
+        resolver:SetScript("OnUpdate", resolveBagHook)
+    end
+    p.kind, p.source = kind, source
+end
+-- Player bags 0-4 and the reagent bag. On the old bank layout bag 5 is a bank bag, so it is left alone there.
+local function playerBag(id)
+    if type(id) ~= "number" then return false end
+    if id >= 0 and id <= 4 then return true end
+    return id == ns.API.ReagentBag() and ns.API.ModernBank() and true or false
+end
+local function blizzardBagID(f)
+    local fn = f.GetBagID or f.GetID
+    if type(fn) ~= "function" then return nil end
+    local ok, id = pcall(fn, f)
+    return ok and id or nil
+end
+local function isPlayerBagFrame(f)
+    return f == _G.ContainerFrameCombinedBags or playerBag(blizzardBagID(f))
+end
+local function suppressBlizzardBag(f)
+    if not ns.cfg.replace or not f:IsShown() or not isPlayerBagFrame(f) then return end
+    -- Container frames are normally not protected; if one is, wait until combat ends.
+    if locked(f) then bagHook.combatPending = true; return end
+    f:Hide()
+    return true
+end
+local function blizzardBagFrames()
+    local list = {}
+    if _G.ContainerFrameCombinedBags then list[#list + 1] = _G.ContainerFrameCombinedBags end
+    for i = 1, math.max(tonumber(NUM_CONTAINER_FRAMES) or 0, 13) do
+        local f = _G["ContainerFrame" .. i]
+        if f then list[#list + 1] = f end
+    end
+    return list
+end
+-- Called at login, when the option changes and after combat. With handOver, default bags that had
+-- to stay open during combat are replaced by this window.
+function ns.ApplyBagReplacement(handOver)
+    bagHook.combatPending = false
+    if not ns.cfg.replace then
+        bagHook.pending, bagHook.openedBy = nil, nil; resolver:SetScript("OnUpdate", nil)
+        return
+    end
+    local hidden = false
+    for _, f in ipairs(blizzardBagFrames()) do hidden = suppressBlizzardBag(f) or hidden end
+    if handOver and hidden and ns.window and not ns.window:IsShown() and not locked(ns.window) then ns.Show("bags") end
+end
 local function replaceBags()
-    if not ns.cfg.replace then return end
-    -- Keep originals for non-player containers and callers explicitly targeting other bags.
-    local originalToggle = ToggleBag
-    ToggleBag = function(id, ...)
-        if ns.API.IsPlayerBag(id) then ns.Toggle()
-        elseif originalToggle then return originalToggle(id, ...) end
+    local function hook(name, handler)
+        if type(_G[name]) == "function" then pcall(hooksecurefunc, name, handler) end
     end
-    for _, name in ipairs({ "ToggleBackpack", "ToggleAllBags" }) do
-        if type(_G[name]) == "function" then _G[name] = function() ns.Toggle() end end
+    hook("ToggleBag", function(id) if playerBag(id) then noteBagCall("toggle") end end)
+    hook("ToggleBackpack", function() noteBagCall("toggle") end)
+    hook("ToggleAllBags", function() noteBagCall("toggle") end)
+    hook("OpenBackpack", function(f) noteBagCall("open", frameToken(f)) end)
+    hook("OpenAllBags", function(f) noteBagCall("open", frameToken(f)) end)
+    hook("CloseBackpack", function(f) noteBagCall("close", frameToken(f)) end)
+    hook("CloseAllBags", function(f) noteBagCall("close", frameToken(f)) end)
+    for _, f in ipairs(blizzardBagFrames()) do
+        if type(f.HookScript) == "function" then pcall(f.HookScript, f, "OnShow", suppressBlizzardBag) end
     end
-    for _, name in ipairs({ "OpenBackpack", "OpenAllBags" }) do
-        if type(_G[name]) == "function" then _G[name] = function() ns.Show("bags") end end
-    end
-    for _, name in ipairs({ "CloseBackpack", "CloseAllBags" }) do
-        if type(_G[name]) == "function" then _G[name] = function() if ns.window then ns.window:Hide() end end end
-    end
+    ns.ApplyBagReplacement()
 end
 local function tooltips()
     GameTooltip:HookScript("OnTooltipCleared", function(tip) tip.ezwowBagsID = nil end)
@@ -87,7 +169,10 @@ frame:SetScript("OnEvent", function(_, event, arg, success)
     elseif event == "PLAYER_MONEY" then
         local char = ns.db.characters[ns.player]; if char then char.money = GetMoney() end; ns.Refresh()
     elseif event == "BANKFRAME_OPENED" then
+        local wasShown = ns.window:IsShown()
         ns.state.bank = true; ns.ScanStorage("bank"); ns.Show("bank")
+        -- Opened for the bank: closing the bank (with any frame argument) closes it again.
+        if ns.cfg.replace and not wasShown then bagHook.openedBy = true end
     elseif event == "BANKFRAME_CLOSED" then
         -- Never rescan now: bank APIs may already return zero slots after the close event.
         ns.state.bank = false; ns.moveQueue = nil; ns.Refresh()
@@ -96,6 +181,7 @@ frame:SetScript("OnEvent", function(_, event, arg, success)
     elseif event == "AUCTION_ITEM_LIST_UPDATE" then ns.Auction.Results(false)
     elseif event == "REPLICATE_ITEM_LIST_UPDATE" then ns.Auction.Results(true)
     elseif event == "PLAYER_REGEN_DISABLED" then ns.moveQueue = nil; ns.Refresh()
+    elseif event == "PLAYER_REGEN_ENABLED" then if bagHook.combatPending then ns.ApplyBagReplacement(true) end
     elseif event == "PLAYER_LOGOUT" then ns.ScanStorage("bags"); if ns.state.bank then ns.ScanStorage("bank") end
     elseif event == "MERCHANT_SHOW" then ns.state.merchant = true
     elseif event == "MERCHANT_CLOSED" then ns.state.merchant = false; ns.moveQueue = nil; ns.Refresh()
