@@ -1,15 +1,11 @@
-# v0.1.18
+# v0.1.19
 
 ### 한국어
-- 가방 아이템 툴팁에서 나던 오류를 수정했습니다.
-- 은행에서 캐릭터 은행 탭만 표시되도록 수정했습니다.
-- 여러 묶음 합계 줄이 한국어로 표시됩니다.
-- 전투 중 아이템 재사용 대기시간 오류를 수정했습니다.
-- /ezb 명령어에 대소문자·공백이 섞여도 동작합니다.
+- 기본 가방 대체 방식을 바꿔 상인·은행·우편함·가방 버튼 사용 시 "애드온 동작 차단" 오류가 나지 않도록 수정했습니다.
+- "기본 가방 대체" 설정이 /reload 없이 바로 적용됩니다.
+- 상인·우편함·경매장이 연 가방 창은 그 창을 닫으면 함께 닫히고, 직접 연 가방 창은 열린 채로 유지됩니다.
 
 ### English
-- Fixed errors on bag item tooltips.
-- The bank now shows only the character's bank tabs.
-- The stack total line is now localized.
-- Fixed item cooldown errors during combat.
-- /ezb commands now ignore case and extra spaces.
+- Changed how default bags are replaced to prevent "action blocked" errors with merchants, the bank, mail and bag buttons.
+- The "Replace default bags" setting now applies immediately without /reload.
+- The bag window now closes with the merchant, mailbox or auction house that opened it, and stays open if you opened it yourself.
