@@ -1,11 +1,11 @@
-# v0.1.19
+# v0.1.20
 
 ### 한국어
-- 기본 가방 대체 방식을 바꿔 상인·은행·우편함·가방 버튼 사용 시 "애드온 동작 차단" 오류가 나지 않도록 수정했습니다.
-- "기본 가방 대체" 설정이 /reload 없이 바로 적용됩니다.
-- 상인·우편함·경매장이 연 가방 창은 그 창을 닫으면 함께 닫히고, 직접 연 가방 창은 열린 채로 유지됩니다.
+- 전투 중 처음 가방을 열어도 아이템을 사용할 수 있도록 고쳤습니다.
+- 상인에게 팔 수 없거나 환불 가능한 아이템이 일괄 판매에 포함되지 않도록 고쳤습니다.
+- 캐릭터 이름을 "이름 성"으로 표시합니다.
 
 ### English
-- Changed how default bags are replaced to prevent "action blocked" errors with merchants, the bank, mail and bag buttons.
-- The "Replace default bags" setting now applies immediately without /reload.
-- The bag window now closes with the merchant, mailbox or auction house that opened it, and stays open if you opened it yourself.
+- Items can now be used even when the bags are first opened in combat.
+- Items a vendor won't buy and refundable items are no longer included in bulk selling.
+- Character names are shown with the surname.
