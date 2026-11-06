@@ -59,9 +59,10 @@ function ns.BeginMove(category, target)
     local queue = {}
     for _, raw in ipairs(ns.Snapshot() and ns.Snapshot().items or {}) do
         if ns.Category(ns.Enrich(ns.Copy(raw))) == category then
-            -- Merchant batches only include common/poor, non-quest, unassigned items.
+            -- Merchant batches (a category the player picked) only include common/poor, non-quest,
+            -- unassigned items with a vendor price that are not refundable.
             if target ~= "merchant" or ((raw.quality or 1) <= 1 and not raw.quest
-                and not ns.cfg.assignments[raw.id] and (raw.sellPrice or 0) > 0) then
+                and not ns.cfg.assignments[raw.id] and (raw.sellPrice or 0) > 0 and API.Sellable(raw.bag, raw.slot)) then
                 queue[#queue + 1] = ns.Copy(raw)
             end
         end

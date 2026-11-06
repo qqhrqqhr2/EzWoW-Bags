@@ -107,7 +107,7 @@ local function replaceBags()
     ns.ApplyBagReplacement()
 end
 local function tooltips()
-    GameTooltip:HookScript("OnTooltipCleared", function(tip) tip.ezwowBagsID = nil end)
+    GameTooltip:HookScript("OnTooltipCleared", function(tip) ns.ClearTooltipItem(tip) end)
     local function secret(value) return issecretvalue and issecretvalue(value) end
     local function append(tip, data)
         -- Mainline passes tooltip data; tip:GetItem() may be missing on this client.
@@ -154,12 +154,18 @@ local function init()
         else ns.Toggle() end
     end
     ns.ready = true
+    ns.WarmSecureSlots("bags")
 end
 frame:SetScript("OnEvent", function(_, event, arg, success)
     if event == "PLAYER_LOGIN" then init(); return end
     if not ns.ready then return end
     if event == "BAG_UPDATE_DELAYED" or event == "BAG_UPDATE" or event == "ITEM_LOCK_CHANGED"
-        or event == "PLAYERBANKSLOTS_CHANGED" or event == "BAG_CONTAINER_UPDATE" or event == "BANK_TABS_CHANGED" or event == "PLAYER_EQUIPMENT_CHANGED" then ns.Dirty()
+        or event == "PLAYERBANKSLOTS_CHANGED" or event == "BAG_CONTAINER_UPDATE" or event == "BANK_TABS_CHANGED" or event == "PLAYER_EQUIPMENT_CHANGED" then
+        ns.Dirty()
+        -- A new or bigger bag (or bank tab) needs more item buttons; built out of combat.
+        if event == "BAG_CONTAINER_UPDATE" or event == "BANK_TABS_CHANGED" then
+            ns.WarmSecureSlots("bags"); ns.WarmSecureSlots("bank")
+        end
     elseif event == "BAG_UPDATE_COOLDOWN" then ns.viewDirty = true
     elseif event == "GET_ITEM_INFO_RECEIVED" then
         if success ~= false then
@@ -171,7 +177,7 @@ frame:SetScript("OnEvent", function(_, event, arg, success)
         local char = ns.db.characters[ns.player]; if char then char.money = GetMoney() end; ns.Refresh()
     elseif event == "BANKFRAME_OPENED" then
         local wasShown = ns.window:IsShown()
-        ns.state.bank = true; ns.ScanStorage("bank"); ns.Show("bank")
+        ns.state.bank = true; ns.ScanStorage("bank"); ns.WarmSecureSlots("bank"); ns.Show("bank")
         -- Opened for the bank: closing the bank (with any frame argument) closes it again.
         if ns.cfg.replace and not wasShown then bagHook.openedBy = true end
     elseif event == "BANKFRAME_CLOSED" then
@@ -185,6 +191,7 @@ frame:SetScript("OnEvent", function(_, event, arg, success)
     elseif event == "PLAYER_REGEN_ENABLED" then
         if bagHook.combatPending then ns.ApplyBagReplacement(true) end
         ns.AfterCombat()
+        ns.WarmSecureSlots("bags"); ns.WarmSecureSlots("bank")
     elseif event == "PLAYER_LOGOUT" then ns.ScanStorage("bags"); if ns.state.bank then ns.ScanStorage("bank") end
     elseif event == "MERCHANT_SHOW" then ns.state.merchant = true
     elseif event == "MERCHANT_CLOSED" then ns.state.merchant = false; ns.moveQueue = nil; ns.Refresh()

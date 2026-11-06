@@ -7,8 +7,9 @@ function API.PlayerName()
         local ok, full = pcall(NameUtil.FormatUnitNameForDisplay, "player")
         if ok and type(full) == "string" and full ~= "" then return full end
     end
-    local interface = GetBuildInfo and select(4, GetBuildInfo())
-    if tonumber(interface) == 16001 and second and second ~= "" and second ~= GetRealmName() then
+    -- This client line (Interface 16000-19999): names carry a surname as the second value.
+    local interface = tonumber(GetBuildInfo and select(4, GetBuildInfo()))
+    if interface and interface >= 16000 and interface <= 19999 and second and second ~= "" and second ~= GetRealmName() then
         return first .. " " .. second
     end
     if UnitFullName then
@@ -41,6 +42,24 @@ function API.Item(bag, slot)
     link = link or (getLink and getLink(bag, slot))
     return { icon = a, count = count or 1, locked = flag(locked), quality = quality,
         link = link, id = link and tonumber(link:match("item:(%d+)")) }
+end
+-- False for items a vendor won't pay for and for items that can still be refunded.
+function API.Sellable(bag, slot)
+    local fn = API.Container("GetContainerItemInfo")
+    if fn then
+        local a, _, _, _, _, _, _, _, noValue = fn(bag, slot)
+        if type(a) == "table" then noValue = a.hasNoValue end
+        if noValue == true or noValue == 1 then return false end
+    end
+    local purchase = API.Container("GetContainerItemPurchaseInfo")
+    if purchase then
+        local ok, p, _, refund = pcall(purchase, bag, slot, false)
+        if ok then
+            if type(p) == "table" then refund = p.refundSeconds end
+            if (tonumber(refund) or 0) > 0 then return false end
+        end
+    end
+    return true
 end
 function API.Info(link)
     local fn = GetItemInfo or (C_Item and C_Item.GetItemInfo)

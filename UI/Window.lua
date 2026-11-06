@@ -4,6 +4,9 @@ local items, headers, sidebar, bagButtons = {}, {}, {}, {}
 -- Live bag/bank slots use Blizzard's secure item button so right-click can use potions,
 -- food and other items (also in combat). It sits invisibly on top of the drawn slot.
 local secureSlots, holders, secureCount = {}, {}, 0
+-- Our own data for the template buttons and the shared tooltip is kept outside those frames.
+local slotVisual = setmetatable({}, { __mode = "k" })
+local tooltipItem = setmetatable({}, { __mode = "k" })
 local function bagHolder(bag)
     local h = holders[bag]
     if not h then
@@ -16,26 +19,27 @@ local function hideRegion(region)
     if type(region) == "table" and region.SetAlpha then region:SetAlpha(0) end
 end
 local function secureExtras(self)
-    local e = self.visual and self.visual.entry
+    local visual = slotVisual[self]
+    local e = visual and visual.entry
     if e and e.sources and #e.sources > 1 and GameTooltip:IsOwned(self) then
         GameTooltip:AddLine("Σ " .. e.count .. " · " .. string.format(ns.Text("stacks"), #e.sources), .65, .72, .78)
         GameTooltip:Show()
     end
 end
--- The secure item buttons make the window protected. In combat a protected frame can't be
--- moved, resized, scaled, shown or hidden, so combat updates only change counts, icons and
--- cooldowns, and the full layout runs again once combat ends.
+-- If the window ever reports itself protected, in combat it can't be moved, resized, scaled,
+-- shown or hidden; then combat updates only change counts, icons and cooldowns, and the full
+-- layout runs again once combat ends. Otherwise existing item buttons are re-anchored freely.
 function ns.LayoutLocked()
     local f = ns.window
     if not f or not (InCombatLockdown and InCombatLockdown()) then return false end
-    if secureCount > 0 then return true end
     return type(f.IsProtected) == "function" and f:IsProtected() and true or false
 end
 local function secureSlot(bag, slot)
     local key = bag .. ":" .. slot
     local b = secureSlots[key]
     if b ~= nil then return b or nil end
-    -- New secure buttons are only made out of combat; the next layout after combat adds them.
+    -- A button made in combat can't use items, so new ones are only made out of combat (the
+    -- pool below is built ahead of time); the next layout after combat adds any missing ones.
     if API.InCombat() then ns.layoutPending = true; return nil end
     secureCount = secureCount + 1
     local name = "EzWoWBagsSlot" .. secureCount
@@ -51,8 +55,47 @@ local function secureSlot(bag, slot)
     -- Post-hook only: the template's own tooltip refresh keeps running untouched.
     if type(button.UpdateTooltip) == "function" then hooksecurefunc(button, "UpdateTooltip", secureExtras) end
     button:HookScript("OnEnter", secureExtras)
+    button:Hide()
     secureSlots[key] = button
     return button
+end
+-- Builds the item buttons for every slot of the current bags (and the bank once it was
+-- opened) out of combat, a few per frame, so a first opening in combat has usable slots.
+local warmQueue, warmQueued, warmHead, warmTail, warmFrame = {}, {}, 1, 0, nil
+local WARM_BUDGET_MS, WARM_FALLBACK_COUNT = 4, 8
+local function warmStep(self)
+    if API.InCombat() then self:SetScript("OnUpdate", nil); return end -- resumed after combat
+    local clock = type(debugprofilestop) == "function" and debugprofilestop or nil
+    local start, made = clock and clock(), 0
+    while warmQueue[warmHead] do
+        local job = warmQueue[warmHead]
+        warmQueue[warmHead] = nil; warmHead = warmHead + 1
+        local key = job.bag .. ":" .. job.slot
+        warmQueued[key] = nil
+        if secureSlots[key] == nil then secureSlot(job.bag, job.slot); made = made + 1 end
+        if clock then
+            if clock() - start >= WARM_BUDGET_MS then return end
+        elseif made >= WARM_FALLBACK_COUNT then return end
+    end
+    warmQueue, warmHead, warmTail = {}, 1, 0
+    self:SetScript("OnUpdate", nil)
+end
+function ns.WarmSecureSlots(storage)
+    if not ns.content then return end
+    if storage == "bank" and not ns.state.bank then return end
+    for _, bag in ipairs(API.Bags(storage or "bags")) do
+        for slot = 1, API.Slots(bag) do
+            local key = bag .. ":" .. slot
+            if secureSlots[key] == nil and not warmQueued[key] then
+                warmQueued[key] = true
+                warmTail = warmTail + 1
+                warmQueue[warmTail] = { bag = bag, slot = slot }
+            end
+        end
+    end
+    if API.InCombat() or not warmQueue[warmHead] then return end
+    warmFrame = warmFrame or CreateFrame("Frame")
+    warmFrame:SetScript("OnUpdate", warmStep)
 end
 local function updateCooldown(b, source, empty)
     local cooldown = b.Cooldown or _G[b:GetName() .. "Cooldown"]
@@ -72,13 +115,14 @@ local function attachSecure(visual, e)
     local source = e and (e.sources and e.sources[1] or e)
     local b = source and source.bag and source.slot and API.UsableSnapshot() and secureSlot(source.bag, source.slot)
     if visual.secure and visual.secure ~= b then
-        if visual.secure.visual == visual then visual.secure.visual = nil end
+        if slotVisual[visual.secure] == visual then slotVisual[visual.secure] = nil end
         visual.secure = nil
     end
     visual:EnableMouse(not b)
     if not b then return end
-    if b.visual and b.visual ~= visual and b.visual.secure == b then b.visual.secure = nil; b.visual:EnableMouse(true) end
-    b.visual, visual.secure = visual, b
+    local previous = slotVisual[b]
+    if previous and previous ~= visual and previous.secure == b then previous.secure = nil; previous:EnableMouse(true) end
+    slotVisual[b], visual.secure = visual, b
     b:ClearAllPoints(); b:SetAllPoints(visual)
     b:SetFrameLevel(visual:GetFrameLevel() + 4)
     updateCooldown(b, source, e.empty)
@@ -87,10 +131,11 @@ end
 -- Buttons stay shown between redraws (hiding them would close an open stack-split box).
 local function hideUnusedSecure()
     for _, b in pairs(secureSlots) do
-        if b and b:IsShown() and not (b.visual and b.visual:IsShown() and b.visual.secure == b) then
+        local visual = b and slotVisual[b]
+        if b and b:IsShown() and not (visual and visual:IsShown() and visual.secure == b) then
             b:Hide()
-            if b.visual and b.visual.secure == b then b.visual.secure = nil end
-            b.visual = nil
+            if visual and visual.secure == b then visual.secure = nil end
+            slotVisual[b] = nil
         end
     end
 end
@@ -124,8 +169,8 @@ function ns.RecipeAddonShowsUses()
     return not (type(pr.DB) == "table" and pr.DB.reagentTooltip == false)
 end
 function ns.AddTooltipInfo(tip, id)
-    if not id or not ns.db or tip.ezwowBagsID == id then return end
-    tip.ezwowBagsID = id
+    if not id or not ns.db or tooltipItem[tip] == id then return end
+    tooltipItem[tip] = id
     local uses, names = ns.ReagentUses[id], {}
     for _, skill in ipairs(uses or {}) do names[#names + 1] = ns.ProfessionText(skill) end
     if #names > 0 and not ns.RecipeAddonShowsUses() then tip:AddLine(ns.T("materials") .. ": " .. table.concat(names, ", "), .94, .72, .42, true) end
@@ -141,6 +186,7 @@ function ns.AddTooltipInfo(tip, id)
         if row.bankTime then tip:AddLine("  " .. ns.T("bank") .. ": " .. stamp(row.bankTime), .5, .58, .62) end
     end
 end
+function ns.ClearTooltipItem(tip) tooltipItem[tip] = nil end
 local function enterItem(self)
     local e = self.entry
     if not e or e.empty then return end
