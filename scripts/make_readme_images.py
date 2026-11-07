@@ -3,11 +3,16 @@
 
 The windows are rebuilt from the sizes, positions, colours and texts in UI/Window.lua,
 UI/Widgets.lua and UI/Options.lua (game pixels x SCALE). Item art is simplified.
-usage: python3 scripts/make_readme_images.py .   (needs: pip install playwright)
+usage: python scripts/make_readme_images.py .
+Renders with a local headless Chrome (set CHROME=<path> if it is not found); standard library only.
 """
+import base64
+import os
+import shutil
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
-from playwright.sync_api import sync_playwright
 
 SCALE = 1.36
 ACCENT = "#f0b86b"          # UI.Theme.accent .94 .72 .42
@@ -49,10 +54,10 @@ T = {
             ("툴팁", "쓰이는 전문 기술, 경매장 단가와 수집 시각, 캐릭터별 가방·은행 보유 수."),
         ],
         # settings
-        "sTitle": "설정창", "sHead": "/ezbags settings · 언어, 표시 항목, 보기·정렬, 크기, 분류 관리",
-        "sec": ["일반", "아이콘 표시", "보기", "분류·창"],
+        "sTitle": "설정창", "sHead": "/ezbags settings · 언어, 상인 자동 판매·수리, 표시 항목, 보기·정렬, 크기, 분류 관리",
+        "sec": ["일반", "상인", "아이콘 표시", "보기", "분류·창"],
         "language": "언어", "langValue": "자동 (게임 언어)",
-        "checks1": ["기본 가방 대체", "묶음 합계 표시"], "checks2": ["아이템 용도", "장비 레벨", "빈 칸 개별 표시", "새 아이템 분류"],
+        "checks1": ["기본 가방 대체", "묶음 합계 표시"], "checksM": ["회색 잡템 자동 판매", "장비 자동 수리"], "checks2": ["아이템 용도", "장비 레벨", "빈 칸 개별 표시", "새 아이템 분류"],
         "choices": [("보기", "분류"), ("아이템 정렬", "이름"), ("분류 정렬", "이름")],
         "numbers": [("줄당 칸 수 (전체)", "12 (6+6)"), ("분류 열 수", "2"), ("아이콘 크기", "30"), ("창 크기", "1"), ("불투명도", "0.96")],
         "restore": "숨김·꺼진 분류 복원", "reset": "창 위치 초기화", "catName": "분류 이름", "catQuery": "검색식",
@@ -60,6 +65,7 @@ T = {
         "hint": "검색식을 비우면 아이템을 끌어 놓아 지정합니다.",
         "sNotes": [
             ("일반", "언어(자동 + 8개 언어, 목록에서 선택), 기본 가방 대체(B 키·가방 버튼), 같은 아이템 묶음 합계."),
+            ("상인", "상점을 열면 회색 잡템을 모두 팔고 장비를 수리한 뒤 금액을 알려 줍니다. Shift를 누른 채 열면 건너뜁니다."),
             ("아이콘 표시", "아이템 용도, 장비 레벨, 빈 칸 개별 표시, 새 아이템을 별도 분류로."),
             ("보기·정렬", "분류 · 전체 · 목록 보기, 아이템 정렬(이름·등급), 분류 정렬(이름·크기)."),
             ("크기", "줄당 칸 수 6~20, 분류 열 1~3, 아이콘 28~56, 창 크기 0.65~1.4, 불투명도 0.4~1."),
@@ -94,10 +100,10 @@ T = {
             ("Bag icons · free slots", "Keyring → bags 4·3·2·1 → backpack with free slots; drop an item to put it in that bag. Gold and free slot totals."),
             ("Tooltip", "Professions that use the item, auction unit price and age, per-character bag and bank counts."),
         ],
-        "sTitle": "Settings", "sHead": "/ezbags settings · language, icon labels, view and sorting, sizes, categories",
-        "sec": ["General", "Item icons", "View", "Categories & window"],
+        "sTitle": "Settings", "sHead": "/ezbags settings · language, vendor auto-sell and repair, icon labels, view and sorting, sizes, categories",
+        "sec": ["General", "Merchant", "Item icons", "View", "Categories & window"],
         "language": "Language", "langValue": "Auto (game language)",
-        "checks1": ["Replace default bags", "Combine stacks"], "checks2": ["Purpose labels", "Equipment levels", "Individual free slots", "New item category"],
+        "checks1": ["Replace default bags", "Combine stacks"], "checksM": ["Auto-sell grey junk", "Auto-repair gear"], "checks2": ["Purpose labels", "Equipment levels", "Individual free slots", "New item category"],
         "choices": [("View", "Sections"), ("Item sorting", "Name"), ("Category sorting", "Name")],
         "numbers": [("Items per row (total)", "12 (6+6)"), ("Category columns", "2"), ("Icon size", "30"), ("Window scale", "1"), ("Opacity", "0.96")],
         "restore": "Restore categories", "reset": "Reset position", "catName": "Category name", "catQuery": "Search expression",
@@ -105,6 +111,7 @@ T = {
         "hint": "Leave the query empty to assign items by dragging.",
         "sNotes": [
             ("General", "Language (automatic + 8 languages, picked from a list), replace default bags (B key, bag buttons), combine stacks."),
+            ("Merchant", "When a vendor opens, sells every grey item and repairs your gear, then reports the gold. Hold Shift while opening to skip."),
             ("Item icons", "Purpose labels, item levels, individual free slots, a separate category for new items."),
             ("View · sorting", "Sections · Grid · List, item sorting (name, quality), category sorting (name, size)."),
             ("Sizes", "Items per row 6–20, category columns 1–3, icons 28–56, window scale 0.65–1.4, opacity 0.4–1."),
@@ -364,8 +371,10 @@ def settings_page(lang, icon_uri):
         y += 8
     checks(t["checks1"])
     section(t["sec"][1])
-    checks(t["checks2"], off=(2, 3))  # free slots / new item category are off by default
+    checks(t["checksM"])              # autoSellJunk / autoRepair are on by default
     section(t["sec"][2])
+    checks(t["checks2"], off=(2, 3))  # free slots / new item category are off by default
+    section(t["sec"][3])
     for name, value in t["choices"]:
         p.append(f'<div class="lbl" style="{at(20, y + 6)}">{name}</div>')
         p.append(f'<div class="btn" style="{at(218, y)}width:{px(182)};height:{px(24)}">{value}  ▾</div>')
@@ -378,7 +387,7 @@ def settings_page(lang, icon_uri):
         p.append(f'<div class="btn" style="{at(378, y)}width:{px(22)};height:{px(20)}">+</div>')
         y += 24
     y += 8
-    section(t["sec"][3])
+    section(t["sec"][4])
     p.append(f'<div class="btn" style="{at(20, y)}width:{px(186)};height:{px(24)}">{t["restore"]}</div>')
     p.append(f'<div class="btn" style="{at(214, y)}width:{px(186)};height:{px(24)}">{t["reset"]}</div>')
     y += 34
@@ -396,7 +405,8 @@ def settings_page(lang, icon_uri):
             f'<div class="close" style="{at(W - 14 - 24, 16)}">X</div>']
     win = f'<div class="win" style="left:{ox}px;top:{oy}px;width:{px(W)};height:{px(H)}">' + "".join(head + p) + '</div>'
     # callouts on the right edge of each section
-    spans = [(secs[0], secs[1]), (secs[1], secs[2]), (secs[2], secs[2] + 26 + 3 * 28), (secs[2] + 26 + 3 * 28, secs[3]), (secs[3], H)]
+    spans = [(secs[0], secs[1]), (secs[1], secs[2]), (secs[2], secs[3]), (secs[3], secs[3] + 26 + 3 * 28),
+             (secs[3] + 26 + 3 * 28, secs[4]), (secs[4], H)]
     calls = "".join(f'<div class="call" style="left:{ox + W * SCALE + 18:.0f}px;top:{oy + (a + b) / 2 * SCALE - 15:.0f}px">{i}</div>'
                     for i, (a, b) in enumerate(spans, 1))
     notes = "".join(f'<div class="note"><span class="n">{i}</span><div><b>{a}</b> — {b}</div></div>' for i, (a, b) in enumerate(t["sNotes"], 1))
@@ -408,25 +418,40 @@ def settings_page(lang, icon_uri):
     return body, page_h
 
 
+def find_chrome():
+    cands = [os.environ.get("CHROME"), r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+             r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+             "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+             shutil.which("chrome"), shutil.which("google-chrome"), shutil.which("chromium")]
+    for cand in cands:
+        if cand and Path(cand).exists():
+            return cand
+    sys.exit("Chrome not found (set CHROME=<path to chrome>)")
+
+
 def main(root: Path):
+    root = root.resolve()
     out = root / "docs" / "images"
     out.mkdir(parents=True, exist_ok=True)
-    import base64
     icon_uri = "data:image/png;base64," + base64.b64encode((root / "Media" / "Icon.png").read_bytes()).decode()
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch()
-        page = browser.new_page(viewport={"width": 1600, "height": 1000}, device_scale_factor=1)
+    chrome = find_chrome()
+    work = Path(tempfile.mkdtemp(prefix="ezbags_readme_"))
+    try:
         for lang in ("ko", "en"):
             for name, fn in (("ui", ui_page), ("settings", settings_page)):
                 body, h = fn(lang, icon_uri)
                 html = f'<html><head><meta charset="utf-8"><style>{CSS}</style></head><body>{SHADE}{body}</body></html>'
-                page.set_viewport_size({"width": 1600, "height": int(h)})
-                page.set_content(html)
-                page.wait_for_timeout(200)
-                page.screenshot(path=str(out / f"{name}_{lang}.png"), full_page=False)
-                print("wrote", out / f"{name}_{lang}.png", int(h))
-        browser.close()
+                html_file = work / f"{name}_{lang}.html"
+                html_file.write_text(html, encoding="utf-8")
+                png = out / f"{name}_{lang}.png"
+                subprocess.run([chrome, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=1",
+                                f"--user-data-dir={work / 'chrome_profile'}", f"--window-size=1600,{int(h)}",
+                                f"--screenshot={png}", html_file.as_uri()],
+                               check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
+                print("wrote", png, int(h))
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 if __name__ == "__main__":
-    main(Path(sys.argv[1]))
+    main(Path(sys.argv[1] if len(sys.argv) > 1 else "."))

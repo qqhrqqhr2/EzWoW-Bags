@@ -124,6 +124,7 @@ local function tooltips()
 end
 local function init()
     ns.InitDB()
+    ns.History.Init()
     ns.Auction.SyncPrices()
     ns.ScanStorage("bags")
     ns.CreateWindow()
@@ -177,7 +178,10 @@ frame:SetScript("OnEvent", function(_, event, arg, success)
         local char = ns.db.characters[ns.player]; if char then char.money = GetMoney() end; ns.Refresh()
     elseif event == "BANKFRAME_OPENED" then
         local wasShown = ns.window:IsShown()
-        ns.state.bank = true; ns.ScanStorage("bank"); ns.WarmSecureSlots("bank"); ns.Show("bank")
+        -- the window stays on the tab it shows (bags, bank or prices); the bank tab is
+        -- one click away. Opened by the bank itself, it starts on the tab used last.
+        ns.state.bank = true; ns.ScanStorage("bank"); ns.WarmSecureSlots("bank")
+        if wasShown then ns.Refresh() else ns.Show() end
         -- Opened for the bank: closing the bank (with any frame argument) closes it again.
         if ns.cfg.replace and not wasShown then bagHook.openedBy = true end
     elseif event == "BANKFRAME_CLOSED" then
@@ -193,8 +197,8 @@ frame:SetScript("OnEvent", function(_, event, arg, success)
         ns.AfterCombat()
         ns.WarmSecureSlots("bags"); ns.WarmSecureSlots("bank")
     elseif event == "PLAYER_LOGOUT" then ns.ScanStorage("bags"); if ns.state.bank then ns.ScanStorage("bank") end
-    elseif event == "MERCHANT_SHOW" then ns.state.merchant = true
-    elseif event == "MERCHANT_CLOSED" then ns.state.merchant = false; ns.moveQueue = nil; ns.Refresh()
+    elseif event == "MERCHANT_SHOW" then ns.state.merchant = true; ns.Merchant.OnShow()
+    elseif event == "MERCHANT_CLOSED" then ns.state.merchant = false; ns.Merchant.OnClosed(); ns.moveQueue = nil; ns.Refresh()
     elseif event == "MAIL_SHOW" then ns.state.mail = true
     elseif event == "MAIL_CLOSED" then ns.state.mail = false; ns.moveQueue = nil; ns.Refresh()
     elseif event == "TRADE_SHOW" then ns.state.trade = true
@@ -205,6 +209,7 @@ frame:SetScript("OnUpdate", function(_, dt)
     if not ns.ready then return end
     elapsed, scanElapsed, shareElapsed = elapsed + dt, scanElapsed + dt, shareElapsed + dt
     ns.PriceCatalog.Tick()
+    ns.History.Tick()
     if ns.priceScrollDirty then ns.priceScrollDirty = false; ns.Refresh() end
     if ns.Auction.syncWork then ns.Auction.SyncPrices(); shareElapsed = 0
     elseif shareElapsed >= 1 then shareElapsed = 0; ns.Auction.SyncPrices() end

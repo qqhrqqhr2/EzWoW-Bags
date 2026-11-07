@@ -95,6 +95,64 @@ function UI.Selected(button, selected)
         button.text:SetTextColor(unpack(UI.Theme.muted))
     end
 end
+-- Flat list rows: alternating shades and no border; the current row gets the accent look.
+function UI.PaintRow(b, index, selected)
+    b.rowIndex, b.rowSelected = index, selected and true or false
+    if b.selectionLine then b.selectionLine:Hide() end
+    if b.rowSelected then
+        b:SetBackdropColor(.31, .225, .135, .95); b:SetBackdropBorderColor(unpack(UI.Theme.accent))
+    else
+        local shade = (index % 2 == 0) and UI.Theme.panel or UI.Theme.bg
+        b:SetBackdropColor(shade[1], shade[2], shade[3], .9); b:SetBackdropBorderColor(0, 0, 0, 0)
+    end
+end
+function UI.FlatRow(b)
+    b:HookScript("OnLeave", function(self) if self.rowIndex then UI.PaintRow(self, self.rowIndex, self.rowSelected) end end)
+end
+-- The main action of a panel: accent colours (dim when it can't be used yet).
+local function paintPrimary(b)
+    if b.primaryOn then
+        b:SetBackdropColor(.31, .225, .135, 1); b:SetBackdropBorderColor(unpack(UI.Theme.accent))
+        b.text:SetTextColor(1, .88, .65, 1); b:SetAlpha(1)
+    else
+        b:SetBackdropColor(unpack(UI.Theme.panel)); b:SetBackdropBorderColor(unpack(UI.Theme.border))
+        b.text:SetTextColor(unpack(UI.Theme.muted)); b:SetAlpha(.55)
+    end
+end
+function UI.Primary(b, on)
+    b.primaryOn = on ~= false
+    if not b.primaryHooked then
+        b.primaryHooked = true
+        b:HookScript("OnLeave", paintPrimary)
+    end
+    if b.SetEnabled then b:SetEnabled(b.primaryOn) end
+    paintPrimary(b)
+end
+-- A small check box in the theme colours (the row around it takes the click).
+function UI.Tick(parent, size)
+    size = size or 14
+    local f = UI.Frame("Frame", nil, parent); f:SetSize(size, size)
+    f:SetBackdrop({ bgFile = white, edgeFile = white, edgeSize = 1 })
+    f.mark = f:CreateTexture(nil, "OVERLAY"); f.mark:SetPoint("CENTER", 1, 0); f.mark:SetSize(size + 8, size + 8)
+    f.mark:SetTexture("Interface\\Buttons\\UI-CheckBox-Check"); f.mark:SetVertexColor(unpack(UI.Theme.accent))
+    function f:SetChecked(on)
+        self:SetBackdropColor(unpack(UI.Theme.input))
+        self:SetBackdropBorderColor(unpack(on and UI.Theme.accent or UI.Theme.border))
+        self.mark:SetShown(on and true or false)
+    end
+    f:SetChecked(false)
+    return f
+end
+-- A thin band behind column titles.
+function UI.HeadBand(parent, y)
+    local band = parent:CreateTexture(nil, "BACKGROUND", nil, 2)
+    band:SetPoint("TOPLEFT", 12, y); band:SetPoint("TOPRIGHT", -12, y); band:SetHeight(20)
+    band:SetColorTexture(UI.Theme.panel[1], UI.Theme.panel[2], UI.Theme.panel[3], .9)
+    local line = parent:CreateTexture(nil, "BORDER")
+    line:SetPoint("TOPLEFT", band, "BOTTOMLEFT"); line:SetPoint("TOPRIGHT", band, "BOTTOMRIGHT"); line:SetHeight(1)
+    line:SetColorTexture(UI.Theme.accent[1], UI.Theme.accent[2], UI.Theme.accent[3], .45)
+    return band
+end
 function UI.Chrome(frame, title)
     UI.Surface(frame)
     frame.headerBg = frame:CreateTexture(nil, "BACKGROUND", nil, 1); frame.headerBg:SetPoint("TOPLEFT", 1, -1); frame.headerBg:SetPoint("TOPRIGHT", -1, -1)

@@ -1,4 +1,69 @@
 local _, ns = ...
+
+-- The "EzWoW - ..." name line at the end of tooltip additions is drawn small.
+-- Shared by the EzWoW addons: the first one loaded sets it up.
+if not (_G.EzWoWTooltipTagSizer and _G.EzWoWTooltipTagSizer.version == 3) then
+    local sizer = {}
+    sizer.version = 3
+    _G.EzWoWTooltipTagSizer = sizer
+    local smallFont
+    local original = setmetatable({}, { __mode = "k" })   -- font string -> its own font object
+    local function tagFont()
+        if not smallFont and CreateFont then
+            smallFont = _G.EzWoWTooltipTagFont or CreateFont("EzWoWTooltipTagFont")
+            smallFont:CopyFontObject(GameTooltipTextSmall or GameTooltipText)
+            local path, _, flags = smallFont:GetFont()
+            if path then smallFont:SetFont(path, 8, flags) end
+        end
+        return smallFont
+    end
+    local function isTag(text)
+        if type(text) ~= "string" or (issecretvalue and issecretvalue(text)) then return false end
+        return text:find("^EzWoW %- ") ~= nil
+    end
+    local function fit(fs, tag)
+        if not fs then return end
+        if tag then
+            if not original[fs] then original[fs] = fs:GetFontObject() or GameTooltipText end
+            if tagFont() then fs:SetFontObject(smallFont) end
+            fs:SetTextColor(0.5, 0.5, 0.5)
+        elseif original[fs] then
+            fs:SetFontObject(original[fs])
+            original[fs] = nil
+        end
+    end
+    function sizer.Refit(tip)
+        local name = tip and tip.GetName and tip:GetName()
+        if type(name) ~= "string" then return end
+        local ok, count = pcall(tip.NumLines, tip)
+        if not ok or type(count) ~= "number" or (issecretvalue and issecretvalue(count)) then return end
+        for i = 1, count do
+            local right = _G[name .. "TextRight" .. i]
+            if right then fit(right, isTag(right:GetText())) end
+            -- line 1 is the tooltip's title: a left "EzWoW - ..." there stays big
+            local left = _G[name .. "TextLeft" .. i]
+            if left then fit(left, i > 1 and isTag(left:GetText())) end
+        end
+    end
+    local function restore(tip)
+        local name = tip and tip.GetName and tip:GetName()
+        if type(name) ~= "string" then return end
+        local rightPrefix, leftPrefix = name .. "TextRight", name .. "TextLeft"
+        for fs, font in pairs(original) do
+            local fsName = fs.GetName and fs:GetName()
+            if type(fsName) == "string" and (fsName:find(rightPrefix, 1, true) == 1 or fsName:find(leftPrefix, 1, true) == 1) then
+                fs:SetFontObject(font)
+                original[fs] = nil
+            end
+        end
+    end
+    for _, tip in ipairs({ GameTooltip, ItemRefTooltip, ShoppingTooltip1, ShoppingTooltip2 }) do
+        if tip then
+            pcall(hooksecurefunc, tip, "Show", function(self) pcall(sizer.Refit, self) end)
+            pcall(tip.HookScript, tip, "OnTooltipCleared", function(self) pcall(restore, self) end)
+        end
+    end
+end
 local UI, API = ns.UI, ns.API
 local items, headers, sidebar, bagButtons = {}, {}, {}, {}
 -- Live bag/bank slots use Blizzard's secure item button so right-click can use potions,
@@ -7,6 +72,42 @@ local secureSlots, holders, secureCount = {}, {}, 0
 -- Our own data for the template buttons and the shared tooltip is kept outside those frames.
 local slotVisual = setmetatable({}, { __mode = "k" })
 local tooltipItem = setmetatable({}, { __mode = "k" })
+-- Attribution line under this addon's block on a game tooltip: once per display, only after
+-- this addon really added lines. While a hover of this addon's own window is still adding its
+-- extra lines (same frame), the line waits until those are in.
+local TAG_TITLE = "EzWoW - Bags"
+local tagDone = setmetatable({}, { __mode = "k" })
+local tagPending = setmetatable({}, { __mode = "k" })
+local tagHooked = setmetatable({}, { __mode = "k" })
+local tagHold, tagHoldTime
+local function tooltipLineCount(tip)
+    if type(tip) ~= "table" or type(tip.NumLines) ~= "function" then return nil end
+    local ok, n = pcall(tip.NumLines, tip)
+    if not ok or (issecretvalue and issecretvalue(n)) or type(n) ~= "number" then return nil end
+    return n
+end
+function ns.NoteTooltipLines(tip)
+    if type(tip) ~= "table" then return end
+    if not tagHooked[tip] and type(tip.HookScript) == "function" then
+        tagHooked[tip] = true
+        pcall(tip.HookScript, tip, "OnTooltipCleared", function(t) tagDone[t] = nil; tagPending[t] = nil end)
+    end
+    tagPending[tip] = true
+end
+function ns.FlushTooltipTag(tip)
+    if type(tip) ~= "table" or not tagPending[tip] or tagDone[tip] then return false end
+    if tagHold == tip and tagHoldTime == GetTime() then return false end
+    if type(tip.AddDoubleLine) ~= "function" then return false end
+    tagPending[tip] = nil
+    tagDone[tip] = true
+    tip:AddDoubleLine(" ", TAG_TITLE, 0, 0, 0, 0.5, 0.5, 0.5)
+    return true
+end
+function ns.HoldTooltipTag(tip) tagHold, tagHoldTime = tip, GetTime() end
+function ns.ReleaseTooltipTag(tip)
+    if tagHold == tip then tagHold, tagHoldTime = nil, nil end
+    return ns.FlushTooltipTag(tip)
+end
 local function bagHolder(bag)
     local h = holders[bag]
     if not h then
@@ -18,10 +119,23 @@ end
 local function hideRegion(region)
     if type(region) == "table" and region.SetAlpha then region:SetAlpha(0) end
 end
+-- Stack total for a live slot of this window; added with the item lines (before the
+-- attribution line) and again whenever the template refreshes the tooltip.
+local function secureSlotStacks(tip)
+    if tip ~= GameTooltip or type(tip.GetOwner) ~= "function" then return end
+    local ok, owner = pcall(tip.GetOwner, tip)
+    local visual = ok and type(owner) == "table" and slotVisual[owner]
+    local e = visual and visual.entry
+    if e and e.sources and #e.sources > 1 then
+        tip:AddLine("Σ " .. e.count .. " · " .. string.format(ns.Text("stacks"), #e.sources), .65, .72, .78)
+    end
+end
+-- Only when the item lines did not run for this display (then the stack line is added here).
 local function secureExtras(self)
+    if tooltipItem[GameTooltip] or not GameTooltip:IsOwned(self) then return end
     local visual = slotVisual[self]
     local e = visual and visual.entry
-    if e and e.sources and #e.sources > 1 and GameTooltip:IsOwned(self) then
+    if e and e.sources and #e.sources > 1 then
         GameTooltip:AddLine("Σ " .. e.count .. " · " .. string.format(ns.Text("stacks"), #e.sources), .65, .72, .78)
         GameTooltip:Show()
     end
@@ -55,6 +169,11 @@ local function secureSlot(bag, slot)
     -- Post-hook only: the template's own tooltip refresh keeps running untouched.
     if type(button.UpdateTooltip) == "function" then hooksecurefunc(button, "UpdateTooltip", secureExtras) end
     button:HookScript("OnEnter", secureExtras)
+    -- Post-hook: Alt / Ctrl+Alt clicks (auction helpers, item lock); the template's own click already ran.
+    button:HookScript("OnClick", function(self, mouse)
+        local parent = self:GetParent()
+        if parent and parent.GetID then ns.AuctionTrade.OnBagClick(parent:GetID(), self:GetID(), mouse) end
+    end)
     button:Hide()
     secureSlots[key] = button
     return button
@@ -171,13 +290,29 @@ end
 function ns.AddTooltipInfo(tip, id)
     if not id or not ns.db or tooltipItem[tip] == id then return end
     tooltipItem[tip] = id
+    local linesBefore = tooltipLineCount(tip)
+    ns.AddTooltipItemLines(tip, id)
+    secureSlotStacks(tip)
+    local linesAfter = tooltipLineCount(tip)
+    if linesBefore and linesAfter and linesAfter > linesBefore then
+        ns.NoteTooltipLines(tip)
+        ns.FlushTooltipTag(tip)
+    end
+end
+function ns.AddTooltipItemLines(tip, id)
     local uses, names = ns.ReagentUses[id], {}
     for _, skill in ipairs(uses or {}) do names[#names + 1] = ns.ProfessionText(skill) end
     if #names > 0 and not ns.RecipeAddonShowsUses() then tip:AddLine(ns.T("materials") .. ": " .. table.concat(names, ", "), .94, .72, .42, true) end
+    local lock = ns.Locks.Kind(id)
+    if lock then tip:AddLine("|TInterface\\PetBattles\\PetBattle-LockIcon:12:12:0:0|t " .. ns.Text(lock == "account" and "lockedAccount" or "locked"), 1, .82, .4) end
     local price = ns.Price(id)
+    local trend = ns.cfg.tooltipTrend and ns.History.TrendText(id)
     if price and not ns.Auction.TooltipActive() then
-        tip:AddDoubleLine(ns.T("prices") .. " / 1", ns.Money(price.unit), .94, .72, .42, 1, .82, .4)
+        tip:AddDoubleLine(ns.T("prices") .. " / 1" .. (trend and ("  " .. trend) or ""), ns.Money(price.unit), .94, .72, .42, 1, .82, .4)
         tip:AddLine(ns.T("cached") .. ": " .. stamp(price.time), .65, .72, .78)
+    elseif trend and not ns.TooltipShowsTrend() then
+        local line = ns.History.TrendLine(id)
+        if line then tip:AddLine(line, .94, .72, .42) end
     end
     for _, row in ipairs(ns.CachedCounts(id)) do
         tip:AddDoubleLine(row.key:match("^(.-) %- ") or row.key,
@@ -187,20 +322,35 @@ function ns.AddTooltipInfo(tip, id)
     end
 end
 function ns.ClearTooltipItem(tip) tooltipItem[tip] = nil end
+-- EzWoW - Tooltip shows its own auction price line and appends this addon's trend to it.
+function ns.TooltipShowsTrend()
+    if not ns.Auction.TooltipActive() then return false end
+    local tooltip = _G.EzWoW_Tooltip
+    if type(tooltip) ~= "table" or not tooltip.appendsBagsTrend then return false end
+    local item = type(tooltip.db) == "table" and type(tooltip.db.item) == "table" and tooltip.db.item or ns.TooltipMerchantSettings()
+    return not (item and item.showAuctionPrice == false)
+end
 local function enterItem(self)
     local e = self.entry
     if not e or e.empty then return end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    ns.HoldTooltipTag(GameTooltip)
     if API.UsableSnapshot() then GameTooltip:SetBagItem(e.bag, e.slot)
     elseif e.link then GameTooltip:SetHyperlink(e.link) end
     ns.AddTooltipInfo(GameTooltip, e.id)
     if not API.UsableSnapshot() then GameTooltip:AddLine(ns.Text("readonly"), 1, .75, .35) end
     if e.sources and #e.sources > 1 then GameTooltip:AddLine("Σ " .. e.count .. " · " .. string.format(ns.Text("stacks"), #e.sources), .65, .72, .78) end
+    ns.ReleaseTooltipTag(GameTooltip)
     GameTooltip:Show()
 end
 local function clickItem(self, mouse)
+    if ns.mode == "prices" and self.priceID then ns.PriceCatalog.Click(self.priceID, mouse); return end
     local e = self.entry
     if not e or not API.UsableSnapshot() then return end
+    if not e.empty and e.bag and IsAltKeyDown and IsAltKeyDown() then
+        local source = e.sources and e.sources[1] or e
+        if ns.AuctionTrade.OnBagClick(source.bag, source.slot, mouse) then return end
+    end
     if e.empty then
         if API.CursorBusy() and not API.InCombat() and not API.Item(e.bag, e.slot) then
             local fn = API.Container("PickupContainerItem"); if fn then fn(e.bag, e.slot) end
@@ -228,6 +378,8 @@ local function itemButton(index)
     b.money = UI.Label(b, "", 12); b.money:SetPoint("RIGHT", -10, 0); b.money:SetWidth(215); b.money:SetJustifyH("RIGHT")
     b.priceAge = UI.Label(b, "", 9); b.priceAge:SetTextColor(unpack(UI.Theme.muted))
     b.fresh = UI.Label(b, "●", 10); b.fresh:SetPoint("BOTTOMLEFT", b.icon, "BOTTOMLEFT", 1, 0); b.fresh:SetTextColor(.35, 1, .65)
+    b.lock = b:CreateTexture(nil, "OVERLAY", nil, 2); b.lock:SetSize(12, 12); b.lock:SetPoint("BOTTOMLEFT", b.icon, "BOTTOMLEFT", 0, 0)
+    b.lock:SetTexture("Interface\\PetBattles\\PetBattle-LockIcon"); b.lock:Hide()
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp"); b:RegisterForDrag("LeftButton")
     b:SetScript("OnClick", clickItem)
     b:SetScript("OnDragStart", function(self) clickItem(self, "LeftButton") end)
@@ -237,7 +389,7 @@ local function itemButton(index)
     return b
 end
 local function renderItem(e, index, x, y, width, height, list)
-    local b = itemButton(index); b.entry = e
+    local b = itemButton(index); b.entry, b.priceID = e, nil
     b:ClearAllPoints(); b:SetPoint("TOPLEFT", x, -y); b:SetSize(width, height)
     b.icon:SetSize(height - 4, height - 4); b.icon:SetTexture(e.icon or "Interface\\PaperDoll\\UI-Backpack-EmptySlot")
     b.icon:SetAlpha(e.empty and .18 or (e.locked and .45 or 1))
@@ -251,6 +403,7 @@ local function renderItem(e, index, x, y, width, height, list)
     b.name:SetText(list and (e.name or ns.T("empty")) or ""); b.name:SetWidth(math.max(0, width - 95))
     b.name:ClearAllPoints(); b.name:SetPoint("LEFT", height + 6, 0)
     b.money:SetText(""); b.priceAge:Hide()
+    b.lock:SetShown(not e.empty and e.id ~= nil and ns.Locks.IsLocked(e.id, ns.selected))
     b:Show()
     attachSecure(b, e)
 end
@@ -402,6 +555,7 @@ local function renderBags(snapshot)
             b:SetScript("OnReceiveDrag", b:GetScript("OnClick"))
             b:SetScript("OnEnter", function(self)
                 GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                ns.HoldTooltipTag(GameTooltip)
                 local inv = API.BagInventory(self.bag)
                 if inv and API.UsableSnapshot() then
                     GameTooltip:SetInventoryItem("player", inv)
@@ -409,6 +563,7 @@ local function renderBags(snapshot)
                 local label = self.kind == "keys" and ns.Text("keyring") or (self.kind == "reagent" and ns.T("materials") .. " " .. ns.T("bags")) or (self.bag == 0 and ns.Text("backpack")) or ns.T(ns.storage)
                 GameTooltip:AddLine(label .. " · " .. ns.T("empty") .. ": " .. self.free .. "/" .. self.slots, .94, .72, .42)
                 if self.bag == 0 then GameTooltip:AddLine(ns.T("empty") .. " (" .. ns.T("bags") .. "): " .. self.totalFree, .94, .72, .42) end
+                ns.ReleaseTooltipTag(GameTooltip)
                 GameTooltip:Show()
             end)
             b:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -539,10 +694,18 @@ function ns.Render()
     local model, err = {}, nil
     if not prices then model, err = ns.BuildModel(snapshot, f.search:GetText()) end
     f.sideScroll:Show()
-    if f.priceLayout ~= prices then
-        f.priceLayout = prices
-        ns.scroll:ClearAllPoints(); ns.scroll:SetPoint("TOPLEFT", 148, -159); ns.scroll:SetPoint("BOTTOMRIGHT", -28, 100)
+    local graphID = prices and ns.PriceCatalog.selected or nil
+    local graphHeight = graphID and (ns.PriceGraph.HEIGHT + 8) or 0
+    local layoutKey = prices and (graphID and "graph" or "prices") or "bags"
+    if f.priceLayout ~= layoutKey then
+        f.priceLayout = layoutKey
+        ns.scroll:ClearAllPoints(); ns.scroll:SetPoint("TOPLEFT", 148, -159 - graphHeight); ns.scroll:SetPoint("BOTTOMRIGHT", -28, 100)
     end
+    if graphID and not f.graph then
+        f.graph = ns.PriceGraph.Create(f)
+        f.graph:SetPoint("TOPLEFT", 148, -159); f.graph:SetPoint("TOPRIGHT", -16, -159)
+    end
+    if f.graph then f.graph:SetShown(graphID ~= nil) end
     if prices then
         for _, b in ipairs(bagButtons) do b:Hide() end
         renderSidebar({})
@@ -597,15 +760,17 @@ function ns.Render()
                 ns.AddTooltipInfo(GameTooltip, self.priceID); GameTooltip:Show()
             end)
             items[n].priceID = e.id
+            if id == ns.PriceCatalog.selected then items[n]:SetBackdropBorderColor(unpack(UI.Theme.accent)) end
             items[n].name:SetText(e.name); items[n].name:SetWidth(math.max(100, width - 190))
             items[n].name:ClearAllPoints(); items[n].name:SetPoint("TOPLEFT", 44, -5)
             items[n].money:SetText(ns.Money(p.unit))
             items[n].money:SetWidth(125)
             items[n].priceAge:ClearAllPoints(); items[n].priceAge:SetPoint("BOTTOMLEFT", 44, 5); items[n].priceAge:SetText(stamp(p.time)); items[n].priceAge:Show()
         end
+        if graphID and f.graph then ns.PriceGraph.Draw(f.graph, graphID) end
         if catalog.error then f.status:SetText(ns.Text("queryError") .. catalog.error)
         elseif not catalog.done then f.status:SetText(ns.T("search") .. " … " .. (catalog.cursor - 1) .. "/" .. #catalog.ids) end
-        f.footer:SetText(ns.T("prices") .. " · " .. #catalog.rows .. " · " .. ns.market)
+        f.footer:SetText(ns.T("prices") .. " · " .. #catalog.rows .. " · " .. ns.market .. "   |cff8398a6" .. ns.Text("priceClickHint") .. "|r")
     else
         ns.visiblePriceWaiting = nil
         if ns.cfg.view == "grid" or ns.cfg.view == "list" then
@@ -657,7 +822,7 @@ function ns.Render()
     if n == 0 then
         f.emptyMessage:SetText(prices and (ns.T("prices") .. ": 0\n\n" .. (shared and ns.Text("ahShared") or ns.Auction.status or (job and (ns.T("scan") .. " …") or ns.Text("ahClosed")))) or (err and ns.Text("queryError") .. err or ns.T("empty")))
     end
-    local desiredHeight = math.max(399, math.min(669, math.max(h + 270, (ns.sidebarHeight or 0) + 265)))
+    local desiredHeight = math.max(399, math.min(669 + graphHeight, math.max(h + 270 + graphHeight, (ns.sidebarHeight or 0) + 265)))
     ns.ResizeWindow(desiredWidth, desiredHeight)
     if f.sideScroll:GetHeight() ~= math.max(100, desiredHeight - 258) then f.sideScroll:SetHeight(math.max(100, desiredHeight - 258)) end
 end

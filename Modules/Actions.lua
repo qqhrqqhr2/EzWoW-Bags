@@ -58,7 +58,9 @@ function ns.BeginMove(category, target)
     if target == "merchant" and not ns.state.merchant then return end
     local queue = {}
     for _, raw in ipairs(ns.Snapshot() and ns.Snapshot().items or {}) do
-        if ns.Category(ns.Enrich(ns.Copy(raw))) == category then
+        -- Locked items stay put when a category goes to a vendor, the mail or a trade.
+        local locked = target ~= "bank" and ns.Locks.IsLocked(raw.id)
+        if not locked and ns.Category(ns.Enrich(ns.Copy(raw))) == category then
             -- Merchant batches (a category the player picked) only include common/poor, non-quest,
             -- unassigned items with a vendor price that are not refundable.
             if target ~= "merchant" or ((raw.quality or 1) <= 1 and not raw.quest

@@ -85,3 +85,10 @@ function Catalog.Tick()
     c.done = c.cursor > #c.ids
     if changed or c.done then ns.viewDirty = true end
 end
+-- Left click: show or hide the price graph. Right click: search in the auction house buy panel.
+function Catalog.Click(id, mouse)
+    if not id then return end
+    if mouse == "RightButton" then ns.AuctionTrade.SearchItemID(id); return end
+    Catalog.selected = Catalog.selected ~= id and id or nil
+    ns.Refresh()
+end

@@ -20,6 +20,12 @@ function AH.TooltipActive()
     if loaded then return loaded("EzWoW-Tooltip") and true or false end
     return _G.EzWoW_Tooltip ~= nil
 end
+-- Listed quantity of the same full scan, when the shared scan stored one.
+local function sharedQuantity(tooltip, key, stamp)
+    local quantities, at = tooltip.auctionQuantities, tonumber(tooltip.auctionQuantityTime)
+    if type(quantities) ~= "table" or not at or math.abs(at - stamp) > 120 then return nil end
+    return tonumber(quantities[key] or quantities[tonumber(key) or key])
+end
 local function syncPricesWork()
     if not ns.db or not AH.TooltipActive() or type(EzWoW_TooltipDB) ~= "table" then return end
     local tooltip = EzWoW_TooltipDB
@@ -49,6 +55,7 @@ local function syncPricesWork()
                 if not old or old.unit ~= price or old.time ~= stamp then
                     market.items[id] = { unit = price, time = stamp, source = "EzWoW Tooltip", mode = "shared" }
                     changed = true
+                    if stamp then ns.History.Queue(id, price, sharedQuantity(tooltip, key, stamp), stamp) end
                 end
                 if not scope or scope.market ~= ns.market or scope.unit ~= price or scope.time ~= stamp then
                     tooltip.EzWoWBagsPriceScopes[id] = { market = ns.market, unit = price, time = stamp }
@@ -100,6 +107,18 @@ local function legacyEntry(index)
     return name, count, buyout, itemID, complete
 end
 function AH.DecodeLegacy(index) return legacyEntry(index) end
+-- One item's current lowest price from a search; the shared scanner records its own quotes.
+function AH.RecordQuote(id, unit, quantity)
+    id, unit = tonumber(id), tonumber(unit)
+    if not ns.db or not id or not unit or unit <= 0 then return end
+    ns.History.Queue(id, unit, quantity, time())
+    if AH.TooltipActive() then return end
+    local market = ns.db.markets[ns.market] or { items = {} }
+    market.items = market.items or {}
+    market.items[id] = { unit = unit, time = time(), mode = "search" }
+    ns.db.markets[ns.market] = market
+    AH.Changed()
+end
 function AH.Stop(message)
     AH.job = nil
     if message then AH.status = message; ns.Print(message) end
@@ -118,6 +137,7 @@ local function finish()
             if not previous or (stamp and (not previous.time or stamp >= previous.time)) then
                 market.items[id] = { unit = price, time = stamp, mode = job.mode }
             end
+            ns.History.Queue(id, price, job.qty and job.qty[id], stamp or time())
             count = count + 1
         end
     end
@@ -169,7 +189,7 @@ function AH.Start(mode)
     mode = mode == "bags" and "bags" or "full"
     if C_AuctionHouse and C_AuctionHouse.ReplicateItems and C_AuctionHouse.GetReplicateItemInfo and C_AuctionHouse.GetNumReplicateItems then
         local market = ns.db.markets[ns.market]
-        local job = { mode = mode, replicate = true, pendingReplicate = true, result = {}, deadline = now() + 30 }
+        local job = { mode = mode, replicate = true, pendingReplicate = true, result = {}, qty = {}, deadline = now() + 30 }
         if mode == "bags" then
             job.filter = {}
             local char = ns.db.characters[ns.player]
@@ -188,7 +208,7 @@ function AH.Start(mode)
         if not QueryAuctionItems or not CanSendAuctionQuery or not GetAuctionItemInfo or not GetNumAuctionItems then AH.Message(ns.Text("ahUnsupported")); return end
         local can, all = CanSendAuctionQuery()
         if (mode == "full" and not all) or (mode ~= "full" and not can) then AH.Message(ns.Text("ahBusy")); return end
-        local job = { mode = mode, result = {}, queue = {}, queueIndex = 1, page = 0 }
+        local job = { mode = mode, result = {}, qty = {}, queue = {}, queueIndex = 1, page = 0 }
         if mode == "bags" then
             local seen = {}
             local char = ns.db.characters[ns.player]
@@ -211,7 +231,7 @@ function AH.Results(replicate, cached)
         -- Share the result of Tooltip or the native UI's full scan without making a second request.
         if not job and AH.TooltipActive() then return end
         if not job then
-            job = { mode = "full", replicate = true, waiting = true, result = {}, passive = true }
+            job = { mode = "full", replicate = true, waiting = true, result = {}, qty = {}, passive = true }
             AH.job = job
         elseif job.pendingReplicate then job.pendingReplicate, job.waiting = nil, true end
         if not cached and job.replicate then job.snapshotTime = AH.replicaTime end
@@ -224,7 +244,7 @@ function AH.Results(replicate, cached)
     job.waiting, job.reading = false, true
     job.count, job.total, job.index, job.retry = count or 0, total or count or 0, 1, 0
     job.pendingRows, job.retryPass = {}, 0
-    job.pageResult, job.deadline = {}, now() + 30
+    job.pageResult, job.pageQty, job.deadline = {}, {}, now() + 30
     if replicate then job.snapshotTime = AH.replicaTime else job.snapshotTime = nil end
 end
 local function readRow(j, index)
@@ -243,6 +263,7 @@ local function readRow(j, index)
     if count > 0 and buyout > 0 then
         local unit = buyout / count
         if not j.pageResult[id] or unit < j.pageResult[id] then j.pageResult[id] = unit end
+        j.pageQty[id] = (j.pageQty[id] or 0) + count
     end
     return true
 end
@@ -281,6 +302,8 @@ function AH.Tick()
     for id, price in pairs(j.pageResult) do
         if not j.result[id] or price < j.result[id] then j.result[id] = price end
     end
+    j.qty = j.qty or {}
+    for id, quantity in pairs(j.pageQty or {}) do j.qty[id] = (j.qty[id] or 0) + quantity end
     j.reading = false
     if j.mode == "bags" and not j.replicate then
         if (j.page + 1) * 50 < j.total and j.count > 0 then j.page = j.page + 1

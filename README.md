@@ -15,7 +15,7 @@ WoW Forever (`Interface: 16001`) · `/ezbags`, `/ezb`
 
 ### 개요
 
-가방·은행을 하나의 창에서 **분류별**로 보여 주는 가방 애드온입니다. 아이콘 위에 **아이템 용도**(퀘·비귀속·책·연금·재봉 같은 전문 기술)를 표시하고, **다른 캐릭터의 가방·은행**을 보기 전용으로 열어 볼 수 있으며, **경매장 시세**를 저장해 툴팁과 분류 합계에 보여 줍니다.
+가방·은행을 하나의 창에서 **분류별**로 보여 주는 가방 애드온입니다. 아이콘 위에 **아이템 용도**(퀘·비귀속·책·연금·재봉 같은 전문 기술)를 표시하고, **다른 캐릭터의 가방·은행**을 보기 전용으로 열어 볼 수 있으며, **경매장 시세**를 저장해 툴팁과 분류 합계에 보여 줍니다. 상점을 열면 **회색 잡템 자동 판매**와 **장비 자동 수리**도 해 줍니다.
 
 ### 화면 미리보기
 
@@ -47,6 +47,8 @@ WoW Forever (`Interface: 16001`) · `/ezbags`, `/ezb`
 - 시세 탭: **전체 시세 수집**(경매장 전체) 또는 **가방 아이템 조회**(가방에 있는 아이템만). 경매장이 열려 있어야 합니다. 왼쪽에서 아이템 종류로 거를 수 있습니다.
 - EzWoW - Tooltip이 켜져 있으면 시세 수집은 Tooltip이 맡고 Bags는 그 가격을 함께 씁니다(툴팁 시세 줄도 Tooltip이 표시).
 - EzWoW - Profession Recipes가 켜져 있으면 재료의 쓰임새는 그쪽 툴팁 목록이 보여 주고, Bags의 "재료:" 줄은 나오지 않습니다.
+- 상점 창을 열면 가방의 회색(하급) 잡템을 모두 팔고, 수리할 수 있는 상인이면 착용·가방 장비를 모두 수리한 뒤 채팅창에 금액을 알려 줍니다. **Shift를 누른 채 상점을 열면** 둘 다 건너뜁니다. 골드가 모자라면 수리하지 않습니다. 두 기능은 설정창의 **상인** 구역에서 끌 수 있습니다.
+- 자동 판매·수리는 원래 EzWoW - Tooltip의 기능이었습니다. 처음 실행할 때 Tooltip에서 고른 설정을 한 번 가져오고, Bags가 켜져 있으면 Tooltip은 이 기능을 쓰지 않습니다.
 - 아래쪽 **정리** 버튼: 게임의 가방 정리 기능으로 가방(은행 탭에서는 열린 은행)을 정리합니다. 전투 중에는 쓸 수 없습니다.
 - 전투 중에는 창의 배치·크기를 바꾸지 않고 개수·쿨다운만 갱신합니다. 전투 중에 연 창·닫은 창과 새 배치는 전투가 끝나면 적용됩니다.
 
@@ -61,14 +63,16 @@ WoW Forever (`Interface: 16001`) · `/ezbags`, `/ezb`
 | ① | 언어 (자동 + 8개 언어) | 자동 |
 | ① | 기본 가방 대체 (바로 적용) | 켬 |
 | ① | 묶음 합계 표시 | 켬 |
-| ② | 아이템 용도 · 장비 레벨 | 켬 |
-| ② | 빈 칸 개별 표시 · 새 아이템 분류 | 끔 |
-| ③ | 보기: 분류 · 전체 · 목록 | 분류 |
-| ③ | 아이템 정렬: 이름 · 등급 / 분류 정렬: 이름 · 크기 | 이름 · 이름 |
-| ④ | 줄당 칸 수 (전체) 6~20 · 분류 열 수 1~3 | 12 · 2 |
-| ④ | 아이콘 크기 28~56 · 창 크기 0.65~1.4 · 불투명도 0.4~1 | 30 · 1 · 0.96 |
-| ⑤ | 숨김·꺼진 분류 복원 · 창 위치 초기화 | - |
-| ⑤ | 사용자 분류 만들기: 이름 + 검색식 (검색식을 비우면 아이템을 끌어 놓아 지정) | - |
+| ② | 회색 잡템 자동 판매 (Shift를 누른 채 상점을 열면 건너뜀) | 켬 |
+| ② | 장비 자동 수리 (Shift를 누른 채 상점을 열면 건너뜀) | 켬 |
+| ③ | 아이템 용도 · 장비 레벨 | 켬 |
+| ③ | 빈 칸 개별 표시 · 새 아이템 분류 | 끔 |
+| ④ | 보기: 분류 · 전체 · 목록 | 분류 |
+| ④ | 아이템 정렬: 이름 · 등급 / 분류 정렬: 이름 · 크기 | 이름 · 이름 |
+| ⑤ | 줄당 칸 수 (전체) 6~20 · 분류 열 수 1~3 | 12 · 2 |
+| ⑤ | 아이콘 크기 28~56 · 창 크기 0.65~1.4 · 불투명도 0.4~1 | 30 · 1 · 0.96 |
+| ⑥ | 숨김·꺼진 분류 복원 · 창 위치 초기화 | - |
+| ⑥ | 사용자 분류 만들기: 이름 + 검색식 (검색식을 비우면 아이템을 끌어 놓아 지정) | - |
 
 ### 명령어 (`/ezbags`, `/ezb`)
 
@@ -92,7 +96,7 @@ WoW Forever (`Interface: 16001`) · `/ezbags`, `/ezb`
 
 ### Overview
 
-A bag addon that shows your bags and bank in one window, **grouped by category**. Icons carry a short **purpose label** (quest, BoE, recipe, or the professions that use a reagent), you can open **other characters' bags and banks** read-only, and saved **auction prices** appear in tooltips and category totals.
+A bag addon that shows your bags and bank in one window, **grouped by category**. Icons carry a short **purpose label** (quest, BoE, recipe, or the professions that use a reagent), you can open **other characters' bags and banks** read-only, and saved **auction prices** appear in tooltips and category totals. At a vendor it also **sells grey junk** and **repairs your gear** automatically.
 
 ### Screenshots
 
@@ -124,6 +128,8 @@ A bag addon that shows your bags and bank in one window, **grouped by category**
 - Prices tab: **Full scan** (whole auction house) or **Scan bag items**. The auction house must be open. Filter by item class on the left.
 - With EzWoW - Tooltip enabled, Tooltip collects prices and Bags shares them (Tooltip also shows the price line).
 - With EzWoW - Profession Recipes enabled, its tooltip list shows where a reagent is used and Bags leaves out its "Materials:" line.
+- When a vendor opens, every grey (poor) item in your bags is sold, and at a vendor who can repair all worn and carried gear is repaired; the gold is reported in chat. **Hold Shift while opening the vendor** to skip both. Repair is skipped when you do not have enough gold. Both can be turned off in the **Merchant** section of the settings.
+- Auto-sell and auto-repair used to be EzWoW - Tooltip features. On the first start the choices made there are carried over once; while Bags is enabled, Tooltip leaves these to Bags.
 - **Sort** button (bottom): sorts your bags (or the open bank on the Bank tab) with the game's own sort. Not available in combat.
 - In combat the window keeps its layout and size and only updates counts and cooldowns; opening, closing and the new layout happen when combat ends.
 
@@ -134,14 +140,16 @@ A bag addon that shows your bags and bank in one window, **grouped by category**
 | ① | Language (automatic + 8 languages) | Automatic |
 | ① | Replace default bags (applies immediately) | On |
 | ① | Combine stacks | On |
-| ② | Purpose labels · Equipment levels | On |
-| ② | Individual free slots · New item category | Off |
-| ③ | View: Sections · Grid · List | Sections |
-| ③ | Item sorting: Name · Quality / Category sorting: Name · Size | Name · Name |
-| ④ | Items per row (total) 6–20 · Category columns 1–3 | 12 · 2 |
-| ④ | Icon size 28–56 · Window scale 0.65–1.4 · Opacity 0.4–1 | 30 · 1 · 0.96 |
-| ⑤ | Restore categories · Reset position | - |
-| ⑤ | New custom category: name + search (leave the search empty to assign items by dragging) | - |
+| ② | Auto-sell grey junk (hold Shift while opening the vendor to skip) | On |
+| ② | Auto-repair gear (hold Shift while opening the vendor to skip) | On |
+| ③ | Purpose labels · Equipment levels | On |
+| ③ | Individual free slots · New item category | Off |
+| ④ | View: Sections · Grid · List | Sections |
+| ④ | Item sorting: Name · Quality / Category sorting: Name · Size | Name · Name |
+| ⑤ | Items per row (total) 6–20 · Category columns 1–3 | 12 · 2 |
+| ⑤ | Icon size 28–56 · Window scale 0.65–1.4 · Opacity 0.4–1 | 30 · 1 · 0.96 |
+| ⑥ | Restore categories · Reset position | - |
+| ⑥ | New custom category: name + search (leave the search empty to assign items by dragging) | - |
 
 ### Slash commands (`/ezbags`, `/ezb`)
 

@@ -92,6 +92,14 @@ function ns.ToggleOptions()
     check("replace", "기본 가방 대체", "Replace default bags", "B 키와 가방 버튼이 기본 가방 대신 이 창을 엽니다. 바로 적용됩니다.", "B and the bag buttons open this window instead of the default bags. Applies immediately.")
     check("merge", "묶음 합계 표시", "Combine stacks", "같은 아이템의 수량을 합칩니다. 클릭은 첫 묶음을 조작합니다.", "Combine identical item counts. Clicking acts on the first stack.")
     endChecks()
+    section("상인", "Merchant")
+    check("autoSellJunk", "회색 잡템 자동 판매", "Auto-sell grey junk",
+        "상점 창을 열면 가방의 회색(하급) 잡템을 모두 팔고 받은 금액을 알려 줍니다. Shift를 누른 채 상점을 열면 건너뜁니다.",
+        "Sells every grey item in your bags when a merchant opens and reports the gold. Hold Shift while opening the merchant to skip.")
+    check("autoRepair", "장비 자동 수리", "Auto-repair gear",
+        "수리할 수 있는 상인을 열면 착용·가방의 모든 장비를 수리합니다. Shift를 누른 채 상점을 열면 건너뜁니다.",
+        "Repairs all worn and carried gear at a merchant who can repair. Hold Shift while opening the merchant to skip.")
+    endChecks()
     section("아이콘 표시", "Item icons")
     check("labels", "아이템 용도", "Purpose labels")
     check("itemLevel", "장비 레벨", "Equipment levels")
@@ -171,6 +179,93 @@ function ns.ToggleOptions()
     y = y + 32
     local hint = label("검색식을 비우면 아이템을 끌어 놓아 지정합니다.", "Leave the query empty to assign items by dragging.", 20, y, 380)
     hint:SetHeight(28); hint:SetTextColor(unpack(UI.Theme.muted))
-    f:SetHeight(y + 40)
+    y = y + 40
+    -- Second column: auction house helpers and item lock.
+    local X, y2 = 440, 70
+    local function section2(ko, en)
+        local text = label(ko, en, X, y2)
+        text:SetFontObject("GameFontNormal"); text:SetTextColor(unpack(UI.Theme.accent))
+        local line = f:CreateTexture(nil, "ARTWORK")
+        line:SetColorTexture(.204, .298, .357, .85); line:SetHeight(1)
+        line:SetPoint("TOPLEFT", X, -y2 - 18); line:SetPoint("TOPRIGHT", -20, -y2 - 18)
+        y2 = y2 + 26
+    end
+    local function check2(key, ko, en, hintKo, hintEn, after)
+        local b = UI.Check(f, "", ns.cfg[key], function(value)
+            ns.cfg[key] = value
+            if after then after(value) end
+            ns.Refresh()
+        end)
+        b:SetPoint("TOPLEFT", X - 2, -y2); b.label:SetWidth(360)
+        f.controls[key] = b
+        bind(function() b.label:SetText(optionLabel(ko, en)); b:SetChecked(ns.cfg[key]) end)
+        b:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(optionLabel(hintKo, hintEn), 1, 1, 1, true); GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        y2 = y2 + 26
+    end
+    section2("경매장", "Auction house")
+    check2("ahSell", "판매 도우미 (Alt+클릭)", "Sell helper (Alt+click)",
+        "경매장이 열려 있을 때 가방 아이템을 Alt+클릭하면 경매장 판매 창에 올리고 현재 최저가보다 조금 낮은 가격을 채웁니다. 등록 버튼은 직접 누릅니다.",
+        "With the auction house open, Alt+click a bag item to place it in the auction house sell frame with a price just under the current lowest. You press the post button yourself.")
+    check2("ahBuyPanel", "경매장 옆 구매 창", "Buy panel next to the auction house",
+        "경매장을 열면 옆에 검색·구매 창을 엽니다. 가방 아이템 Alt+오른쪽 클릭, 시세 탭 오른쪽 클릭으로 검색합니다. 모든 구매는 확인 창에서 한 번 더 눌러야 합니다.",
+        "Opens a search and buy panel beside the auction house. Alt+right-click a bag item or right-click a row in the price tab to search. Every purchase needs a click in a confirm dialog.",
+        function() ns.AuctionTrade.ApplyOptions() end)
+    check2("tooltipTrend", "툴팁에 시세 추세", "Price trend on tooltips",
+        "아이템 툴팁에 최근 시세와 7일 평균 대비 변화(▲/▼)를 한 줄로 보여 줍니다.",
+        "Shows the latest price and its change against the 7-day average (▲/▼) in one tooltip line.")
+    local function label2(ko, en, yy) return label(ko, en, X, yy, 190) end
+    label2("가격 낮추기", "Undercut", y2 + 6)
+    local mode = UI.Button(f, "", 90, function()
+        ns.cfg.ahUndercutMode = ns.cfg.ahUndercutMode == "percent" and "copper" or "percent"; ns.UpdateOptions()
+    end)
+    mode:SetPoint("TOPLEFT", X + 196, -y2)
+    local amount = UI.Edit(f, 70, 24); amount:SetPoint("LEFT", mode, "RIGHT", 6, 0)
+    local unit = UI.Label(f, ""); unit:SetPoint("LEFT", amount, "RIGHT", 6, 0)
+    local function commit(self)
+        local v = tonumber(self:GetText())
+        if v and v == v then
+            if ns.cfg.ahUndercutMode == "percent" then ns.cfg.ahUndercutPercent = math.max(0, math.min(50, math.floor(v * 10 + .5) / 10))
+            else ns.cfg.ahUndercutCopper = math.max(0, math.min(10000000, math.floor(v))) end
+        end
+        ns.UpdateOptions()
+    end
+    amount:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    amount:SetScript("OnEditFocusLost", commit)
+    bind(function()
+        local percent = ns.cfg.ahUndercutMode == "percent"
+        mode.text:SetText((percent and "%" or optionLabel("동", "Copper")) .. "  ⇄")
+        unit:SetText(percent and "%" or optionLabel("동", "Copper"))
+        if not amount:HasFocus() then amount:SetText(tostring(percent and ns.cfg.ahUndercutPercent or ns.cfg.ahUndercutCopper)) end
+    end)
+    y2 = y2 + 30
+    do
+        label2("시세 기록 보관 (일)", "Keep price history (days)", y2 + 5)
+        local value = UI.Label(f, ""); value:SetPoint("TOPLEFT", X + 220, -y2 - 5); value:SetWidth(110); value:SetJustifyH("CENTER")
+        local function adjust(delta)
+            ns.cfg.historyDays = math.max(30, math.min(120, ns.cfg.historyDays + delta)); ns.UpdateOptions()
+        end
+        local minus = UI.Button(f, "-", 22, function() adjust(-10) end); minus:SetPoint("TOPLEFT", X + 196, -y2); minus:SetHeight(20)
+        local plus = UI.Button(f, "+", 22, function() adjust(10) end); plus:SetPoint("TOPLEFT", X + 334, -y2); plus:SetHeight(20)
+        bind(function() value:SetText(tostring(ns.cfg.historyDays)) end)
+        y2 = y2 + 34
+    end
+    section2("아이템 잠금", "Item lock")
+    check2("itemLock", "아이템 잠금 사용", "Use item lock",
+        "잠근 아이템은 회색 잡템 자동 판매, 분류 이동(상인·우편·거래), 경매장 판매 도우미에서 빠집니다.",
+        "Locked items are skipped by auto-selling junk, category moves (vendor, mail, trade) and the auction sell helper.")
+    local clear = UI.Button(f, "", 186, function() ns.Locks.ClearAll(); ns.UpdateOptions(); ns.Refresh() end)
+    clear:SetPoint("TOPLEFT", X, -y2)
+    bind(function() clear.text:SetText(optionLabel("모든 잠금 해제", "Unlock all") .. " (" .. ns.Locks.Count() .. ")") end)
+    y2 = y2 + 34
+    local help = label("가방 아이템 클릭:\nCtrl+Alt+클릭 – 잠금/해제 (이 캐릭터)\nCtrl+Alt+오른쪽 클릭 – 계정 전체 잠금/해제\n경매장에서 Alt+클릭 – 판매 창에 올리기\n경매장에서 Alt+오른쪽 클릭 – 구매 창에서 찾기\n시세 탭: 클릭 – 그래프, 오른쪽 클릭 – 경매장에서 찾기",
+        "Bag item clicks:\nCtrl+Alt+click – lock/unlock (this character)\nCtrl+Alt+right-click – lock/unlock for all characters\nAt the auction house, Alt+click – put into the sell frame\nAt the auction house, Alt+right-click – find in the buy panel\nPrice tab: click – graph, right-click – search the auction house",
+        X, y2, 380)
+    help:SetTextColor(unpack(UI.Theme.muted)); help:SetSpacing(3)
+    y2 = y2 + 108
+    f:SetWidth(840)
+    f:SetHeight(math.max(y, y2) + 10)
     ns.UpdateOptions()
 end
