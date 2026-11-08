@@ -64,10 +64,19 @@ local function vendorPrice(id)
     return num((select(11, API.Info(id)))) or 0
 end
 
+-- Recent price: the lowest unit price at the latest lookup (the price graph
+-- keeps every lookup separately); nil when that lookup is older than 7 days.
+local RECENT_SECONDS = 7 * 86400
 local function recentAverage(id)
+    local price = ns.Price and ns.Price(id)
+    local unit = type(price) == "table" and tonumber(price.unit)
+    if unit and unit > 0 and (not price.time or time() - price.time <= RECENT_SECONDS) then return unit end
+    -- no stored latest price: the newest record of the history
     local H = ns.History
-    local avg = H and H.Average and H.Average(id, H.TREND_DAYS, H.Day())
-    return avg and avg > 0 and avg or nil
+    local points = H and H.Points and H.Points(id) or {}
+    local last = points[#points]
+    if last and last.price and last.price > 0 and H.Day and last.day > H.Day() - 7 then return last.price end
+    return nil
 end
 
 function S.Scan()
@@ -206,7 +215,14 @@ local function rowButton(i)
     local UI = ns.UI
     b = UI.Button(F, "", 276, function(self)
         local r = items[self.index]
-        if not r or run then return end
+        if not r then return end
+        -- only the check box ticks the item; the rest of the row shows its prices
+        -- (a 2px margin around the box, so a click on its edge still counts)
+        if not self.tick:IsMouseOver(2, -2, -2, 2) then
+            if S.ShowPricesFor then S.ShowPricesFor(r.id) end
+            return
+        end
+        if run then return end
         checked[r.id] = not checked[r.id] or nil
         S.Render()
     end)
@@ -356,6 +372,8 @@ function S.Create(P)
     P.sellToggle = UI.Button(P, "", 76, function() S.Toggle() end)
     P.sellToggle:SetPoint("TOPRIGHT", -32, -6); P.sellToggle:SetHeight(22)
     P.sellToggle.text:SetText(ns.Text("sellListButton"))
+
+    S.CreatePriceTab(P)
 end
 
 function S.Toggle()
@@ -368,6 +386,161 @@ function S.Toggle()
     end
     local P = T.GetPanel()
     if P and P.sellToggle then ns.UI.Selected(P.sellToggle, F:IsShown()) end
+end
+
+---------------------------------------------------------------------------
+-- Price tab: the price graph of the item open in the buy panel, in a small
+-- window beside the panel (the buy list stays usable, and the graph follows
+-- the item picked there).
+---------------------------------------------------------------------------
+local PF
+local pickedID      -- item clicked in the sell list; nil: the buy panel's item
+local lastBuyID     -- the buy panel's item last seen (a new pick there wins again)
+
+local function drawPriceTab()
+    if not (PF and PF:IsShown()) then return end
+    local id = pickedID or (T.CurrentItemID and T.CurrentItemID())
+    PF.graph:SetShown(id ~= nil)
+    PF.hint:SetShown(id == nil)
+    if not id then
+        PF.hint:SetText(ns.Lang("구매 창이나 판매 목록에서 아이템을 고르면 그 아이템의 시세 그래프가 나옵니다.",
+            "Pick an item in the buy panel or the sell list to see its price graph here."))
+        PF.recent:SetText("")
+        return
+    end
+    ns.PriceGraph.Draw(PF.graph, id)
+    -- the graph needs its size: draw again once it is laid out
+    if PF.graph.retries and PF.graph.retries > 0 and PF.graph.retries <= 5 then
+        C_Timer.After(0, drawPriceTab)
+    end
+    local price = recentAverage(id)
+    PF.recent:SetText(price and (ns.Text("sellListPrice") .. ": " .. ns.Money(price)) or "")
+end
+S.DrawPriceTab = drawPriceTab
+
+-- open by default; closing it is remembered (ns.cfg.ahPriceTab)
+local function openPriceTab()
+    if not PF then return end
+    PF:Show()
+    local P = T.GetPanel()
+    if P and P.priceToggle then ns.UI.Selected(P.priceToggle, true) end
+    C_Timer.After(0, drawPriceTab)
+end
+
+function S.HidePriceTab()
+    if not PF then return end
+    PF:Hide()
+    if ns.cfg then ns.cfg.ahPriceTab = false end
+    local P = T.GetPanel()
+    if P and P.priceToggle then ns.UI.Selected(P.priceToggle, false) end
+end
+
+function S.TogglePriceTab()
+    if not PF then return end
+    if PF:IsShown() then
+        S.HidePriceTab()
+        return
+    end
+    if ns.cfg then ns.cfg.ahPriceTab = true end
+    openPriceTab()
+end
+
+-- a row of the sell list was clicked: its prices in the price window
+function S.ShowPricesFor(id)
+    if not PF then return end
+    pickedID = tonumber(id)
+    if not PF:IsShown() then
+        PF:Show()
+        local P = T.GetPanel()
+        if P and P.priceToggle then ns.UI.Selected(P.priceToggle, true) end
+    end
+    C_Timer.After(0, drawPriceTab)
+end
+
+function S.CreatePriceTab(P)
+    local UI = ns.UI
+    PF = UI.Frame("Frame", nil, P)
+    PF:SetSize(340, ns.PriceGraph.HEIGHT + 46)
+    PF:SetPoint("TOPLEFT", P, "TOPRIGHT", 4, 0)
+    UI.Surface(PF)
+    PF:SetFrameLevel(P:GetFrameLevel() + 10)
+    PF:EnableMouse(true)
+    PF.graph = ns.PriceGraph.Create(PF)
+    PF.graph:SetPoint("TOPLEFT", 6, -8); PF.graph:SetPoint("TOPRIGHT", -6, -8)
+    -- the graph's own x closes this tab here
+    PF.graph.close:SetScript("OnClick", function() S.HidePriceTab() end)
+    PF.recent = UI.Label(PF, "", 12); PF.recent:SetPoint("TOPLEFT", PF.graph, "BOTTOMLEFT", 6, -10)
+    PF.hint = UI.Label(PF, "", 11); PF.hint:SetPoint("TOPLEFT", 14, -16); PF.hint:SetWidth(280)
+    PF.hint:SetTextColor(unpack(UI.Theme.muted))
+    -- refresh: a full price scan of the auction house (the same as the bag window's).
+    -- The auction house refuses queries sent too often: then the player is asked to wait.
+    local RETRY = function() return ns.Lang("갱신되지 않았습니다. 잠시 후 다시 시도해 주세요.",
+        "Prices were not refreshed. Please try again in a moment.") end
+    PF:SetHeight(ns.PriceGraph.HEIGHT + 62)
+    PF.status = UI.Label(PF, "", 11); PF.status:SetPoint("BOTTOMLEFT", 12, 36); PF.status:SetWidth(316)
+    PF.status:SetTextColor(1, .82, .4, 1)
+    PF.recent:ClearAllPoints(); PF.recent:SetPoint("BOTTOMLEFT", 12, 12)
+    PF:Hide()
+
+    -- top row of the buy panel: [refresh prices] [prices] [sell list] [x]
+    -- (narrower buttons so the row still leaves room for the title)
+    P.sellToggle:SetWidth(64); P.sellToggle.text:SetWidth(56)
+    P.priceToggle = UI.Button(P, "", 40, function() S.TogglePriceTab() end)
+    P.priceToggle:SetPoint("RIGHT", P.sellToggle, "LEFT", -4, 0); P.priceToggle:SetHeight(22)
+    P.priceToggle.text:SetText(ns.T("prices"))
+    P.refreshPrices = UI.Button(P, "", 62, function()
+        local AH = ns.Auction
+        if not (AH and AH.Start) or AH.job then return end
+        -- the outcome is shown in the price window
+        if not PF:IsShown() then openPriceTab() end
+        PF.status:SetText("")
+        local shared = AH.TooltipActive and AH.TooltipActive()
+        AH.Start("full")
+        if shared then
+            -- prices come from the tooltip addon's own scans: just read again
+            PF.status:SetText(ns.Lang("공유된 시세를 다시 불러왔습니다.", "Shared prices reloaded."))
+            drawPriceTab()
+        elseif not AH.job then
+            PF.status:SetText(RETRY())
+        end
+    end)
+    P.refreshPrices:SetPoint("RIGHT", P.priceToggle, "LEFT", -4, 0); P.refreshPrices:SetHeight(22)
+    local REFRESH_TEXT = function() return ns.Lang("시세 갱신", "Refresh") end
+    P.refreshPrices.text:SetText(REFRESH_TEXT())
+    -- while a scan runs: the button says so, and the graph is redrawn as prices come in
+    local wasScanning, elapsed = false, 0
+    P.refreshPrices:SetScript("OnUpdate", function(self, dt)
+        elapsed = elapsed + dt
+        if elapsed < 1 then return end
+        elapsed = 0
+        local AH = ns.Auction
+        local scanning = AH and AH.job ~= nil
+        self.text:SetText(scanning and ns.Lang("수집 중…", "Scanning…") or REFRESH_TEXT())
+        if scanning or wasScanning then drawPriceTab() end
+        if wasScanning and not scanning then
+            -- a scan that timed out (the server sent nothing back) is a refused one too
+            local timedOut = AH.status and AH.status == ns.Text("timeout")
+            PF.status:SetText(timedOut and RETRY() or ns.Lang("시세를 갱신했습니다.", "Prices refreshed."))
+        end
+        wasScanning = scanning
+    end)
+
+    -- the price window opens with the buy panel unless it was closed
+    local function openWithPanel()
+        if not (ns.cfg and ns.cfg.ahPriceTab == false) then openPriceTab() end
+    end
+    P:HookScript("OnShow", openWithPanel)
+    if P:IsShown() then openWithPanel() end
+end
+
+-- the price tab follows the item open in the buy panel
+local render = T.RenderPanel
+T.RenderPanel = function(...)
+    render(...)
+    local buyID = T.CurrentItemID and T.CurrentItemID()
+    if buyID and buyID ~= lastBuyID then pickedID = nil end
+    lastBuyID = buyID
+    if PF and PF:IsShown() then drawPriceTab() end
 end
 
 -- the list is laid over the auction panel when that is first made

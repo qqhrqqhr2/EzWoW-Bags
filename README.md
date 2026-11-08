@@ -43,7 +43,7 @@ WoW Forever (`Interface: 16001`) · `/ezbags`, `/ezb`
 | ⑥ | 아이템 | 아이콘 위에 용도(**비귀속 · 퀘 · 책 · 전문 기술**), 오른쪽 위에 장비 레벨, 왼쪽 아래에 새 아이템 초록 점과 **잠금 자물쇠**를 표시합니다. 왼쪽 클릭 집기, **오른쪽 클릭 사용**(물약·음식·귀환석 등, 전투 중에도), Shift 클릭 링크·나누기, **Ctrl+Alt+클릭 잠금**. 현재 캐릭터의 실제 가방과 열린 은행에서만 동작합니다. |
 | ⑦ | 가방 아이콘 · 정리 | 열쇠고리 → 재료 가방 → 가방 4·3·2·1 → 배낭 순서. 빈 칸 수를 표시하고, 아이템을 끌어 놓으면 그 가방에 넣습니다. 위에는 골드와 빈 칸 합계, 아래쪽 **정리**는 게임의 가방 정리, **새 아이템 ✓**는 초록 점을 지웁니다. |
 | ⑧ | 툴팁 | 쓰이는 전문 기술, 잠금 상태, 경매장 단가와 **최근 7일 평균 대비 변화(▲/▼)**, 수집 시각, 같은 서버 캐릭터별 가방·은행 보유 수. 이 애드온이 넣은 줄 아래에 작은 회색 "EzWoW - Bags" 표시가 붙습니다. |
-| ⑨ | 시세 그래프 | 시세 탭에서 아이템을 누르면 **최근 30일 하루 최저가**(선)와 등록 수량(막대)을 그래프로 보여 줍니다. 점에 마우스를 올리면 그날의 값이 나옵니다. |
+| ⑨ | 시세 그래프 | 시세 탭에서 아이템을 누르면 **최근 30일 동안 조회할 때마다의 최저가**(선과 점)와 등록 수량(막대)을 그래프로 보여 줍니다. 날짜 위에 마우스를 올리면 그날의 가장 낮은 값이 나옵니다. 판매 목록의 **최근 시세**는 마지막으로 조회했을 때의 최저가입니다. |
 | ⑩ | 시세 목록 | **전체 시세 수집**(경매장 전체) 또는 **가방 아이템 조회**(가방에 있는 아이템만). 경매장이 열려 있어야 합니다. 왼쪽에서 아이템 종류로 거를 수 있고, 줄을 오른쪽 클릭하면 구매 창에서 찾습니다. |
 | ⑪ | 경매장 구매 창 | 경매장을 열면 옆에 붙어 열립니다. 이름으로 검색하면 **최저가부터** 보여 주고, 수량을 넣고 **최저가부터 사기**를 누르면 싼 매물부터 삽니다. **모든 구매는 확인 창**(아이템·수량·단가·합계)을 거치며, 골드가 모자라거나 최근 7일 평균보다 많이 비싸면 경고합니다. |
 | ⑫ | 판매 목록 | 가방에서 경매장에 올릴 수 있는 물건을 체크 목록으로 보여 줍니다. 체크한 물건을 하나씩 경매장 판매 창에 올리고 최저가보다 조금 낮은 가격을 넣으며, [올리기](또는 경매장의 등록 버튼)를 누를 때마다 다음 물건으로 넘어갑니다. |
@@ -149,7 +149,7 @@ A bag addon that shows your bags and bank in one window, **grouped by category**
 | ⑥ | Items | Purpose label on the icon (**BoE · Q · Recipe · professions**), item level top right, green dot for new items and a **padlock** for locked items bottom left. Left-click picks up, **right-click uses** (potions, food, Hearthstone — also in combat), Shift-click links or splits, **Ctrl+Alt+click locks**. Works on your current character's real bags and an open bank. |
 | ⑦ | Bag icons · Sort | Keyring → reagent bag → bags 4·3·2·1 → backpack, with free slot counts; drop an item on a bag to put it there. Gold and free-slot totals above; **Sort** uses the game's own bag sort, **New ✓** clears the green dots. |
 | ⑧ | Tooltip | Professions that use the item, lock state, auction unit price with the **change against the 7-day average (▲/▼)** and when it was seen, per-character bag and bank counts on the realm. A small grey "EzWoW - Bags" tag follows the lines this addon adds. |
-| ⑨ | Price graph | Click an item on the Prices tab to see its **daily lowest price of the last 30 days** (line) and the listed quantity (bars). Hover a day for its values. |
+| ⑨ | Price graph | Click an item on the Prices tab to see its **lowest price at every lookup of the last 30 days** (line and dots) and the listed quantity (bars). Hover a day for its lowest value. The **recent price** in the sell list is the lowest price of the latest lookup. |
 | ⑩ | Price list | **Full scan** (whole auction house) or **Scan bag items**. The auction house must be open. Filter by item class on the left; right-click a row to find it in the buy panel. |
 | ⑪ | Auction buy panel | Opens beside the auction house. Search by name to see offers **cheapest first**; enter a quantity and press **Buy cheapest first**. **Every purchase goes through a confirm dialog** (item, quantity, unit price, total), with a warning when you lack the gold or the price is far above the 7-day average. |
 | ⑫ | Sell list | Lists the bag items that can be auctioned, with check boxes. The checked items go into the auction house sell frame one at a time, priced just under the lowest; each **Post** (or the auction house's own post button) moves on to the next one. |
@@ -217,7 +217,7 @@ While the bank, mail, trade or a vendor is open, right-click a header → pick t
 
 ### Saved data
 
-- `EzWoW_BagsDB`: settings, every character's bags, bank and gold, auction prices and daily price history per realm and faction, per-character and account-wide item locks, the check marks of the sell list.
+- `EzWoW_BagsDB`: settings, every character's bags, bank and gold, auction prices and price history (one record per lookup) per realm and faction, per-character and account-wide item locks, the check marks of the sell list.
 - A price is the lowest buyout per item and the time it was seen — not a guarantee of what you can buy now.
 - Profession use comes from the WoW Forever recipe data of EzWoW - Profession Recipes (529 reagents; no need to install it).
 

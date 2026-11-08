@@ -10,7 +10,7 @@ ns.defaults = {
     autoSellJunk = true, autoRepair = true,
     -- Auction house helpers
     ahSell = true, ahUndercutMode = "copper", ahUndercutCopper = 1, ahUndercutPercent = 1,
-    ahBuyPanel = true, historyDays = 60, tooltipTrend = true,
+    ahBuyPanel = true, ahPriceTab = true, historyDays = 60, tooltipTrend = true,
     itemLock = true,
 }
 ns.state = { bank = false, auction = false, merchant = false, mail = false, trade = false }

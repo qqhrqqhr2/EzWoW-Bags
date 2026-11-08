@@ -1,10 +1,22 @@
 local _, ns = ...
--- Daily auction price history: per market and item one compact string of "day:minUnit:quantity"
--- records in ascending day order, separated by ";". Quantity may be empty when it is unknown.
+-- Auction price history for the price graph: per market and item one compact string of
+-- "time:minUnit:quantity" records in ascending time order, separated by ";" - one record per
+-- lookup (the lowest unit price seen then). Quantity may be empty when it is unknown.
+-- Older saves kept one record per day ("day:minUnit:quantity"); a first field below
+-- DAY_LIMIT is such a day number and is still read.
 local H = {}; ns.History = H
 local queue, head, tail = {}, 1, 0
 local cache = {}
 local DAY = 86400
+local DAY_LIMIT = 1000000      -- first field below this: a day number (old one-per-day records)
+local SAME_LOOKUP = 300        -- records this close together are one lookup: the later one is kept
+local MAX_POINTS = 200         -- records kept per item (the oldest go first)
+local function recordDay(first)
+    first = tonumber(first)
+    if not first then return nil end
+    if first < DAY_LIMIT then return first end
+    return math.floor(first / DAY)
+end
 
 function H.Day(stamp) return math.floor((tonumber(stamp) or time()) / DAY) end
 function H.Keep() return math.max(30, math.min(120, tonumber(ns.cfg and ns.cfg.historyDays) or 60)) end
@@ -21,7 +33,7 @@ end
 -- Removes leading records older than minDay; nil when nothing is left.
 local function prune(s, minDay)
     while s and s ~= "" do
-        local day = tonumber(s:match("^(%d+)"))
+        local day = recordDay(s:match("^(%d+)"))
         if not day or day >= minDay then return s end
         local cut = s:find(";", 1, true)
         if not cut then return nil end
@@ -34,25 +46,34 @@ function H.Record(id, unit, qty, stamp)
     if not id or not unit or unit <= 0 or unit ~= unit then return end
     unit = math.floor(unit + .5)
     qty = qty and qty > 0 and math.floor(qty) or nil
+    stamp = math.floor(tonumber(stamp) or time())
     local today, day = H.Day(), H.Day(stamp)
     local minDay = today - H.Keep() + 1
     if day < minDay or day > today + 1 then return end
     local m = store(true)
     if not m then return end
     local s = m[id]
-    local record = day .. ":" .. unit .. ":" .. (qty or "")
+    local record = stamp .. ":" .. unit .. ":" .. (qty or "")
     if type(s) ~= "string" or s == "" then m[id] = record; cache[id] = nil; return end
     local cut = s:match(".*();")
     local last = cut and s:sub(cut + 1) or s
-    local lastDay, lastUnit, lastQty = last:match("^(%d+):(%d+):(%d*)$")
-    lastDay, lastUnit = tonumber(lastDay), tonumber(lastUnit)
-    if not lastDay then m[id] = record
-    elseif day == lastDay then
-        -- Same day: keep the day's minimum price and the most recent known quantity.
-        local merged = day .. ":" .. math.min(unit, lastUnit or unit) .. ":" .. (qty or lastQty or "")
-        m[id] = (cut and s:sub(1, cut) or "") .. merged
-    elseif day > lastDay then
-        m[id] = prune(s .. ";" .. record, minDay) or record
+    local lastFirst, _, lastQty = last:match("^(%d+):(%d+):(%d*)$")
+    lastFirst = tonumber(lastFirst)
+    if not lastFirst then
+        m[id] = record
+    elseif lastFirst >= DAY_LIMIT and stamp - lastFirst >= 0 and stamp - lastFirst < SAME_LOOKUP then
+        -- The same lookup reported again: the later price replaces it.
+        m[id] = (cut and s:sub(1, cut) or "") .. stamp .. ":" .. unit .. ":" .. (qty or lastQty or "")
+    elseif (lastFirst >= DAY_LIMIT and stamp > lastFirst) or (lastFirst < DAY_LIMIT and day >= lastFirst) then
+        s = prune(s .. ";" .. record, minDay) or record
+        -- keep at most MAX_POINTS records
+        local count = select(2, s:gsub(";", ";")) + 1
+        while count > MAX_POINTS do
+            local at = s:find(";", 1, true)
+            if not at then break end
+            s = s:sub(at + 1); count = count - 1
+        end
+        m[id] = s
     else return end -- Older than what is stored: the history only grows forward.
     cache[id] = nil
 end
@@ -104,7 +125,8 @@ function H.Init()
         end
     end)
 end
--- Ascending list of { day, price, qty } for one item (cached until the item's string changes).
+-- Ascending list of { day, t, price, qty } for one item (cached until the item's string changes).
+-- day: the whole day number; t: the time in days (fraction included) for the graph's x axis.
 function H.Points(id)
     id = tonumber(id)
     local m = id and store(false)
@@ -114,7 +136,11 @@ function H.Points(id)
     if c and c.s == s and c.market == ns.market then return c.points end
     local points = {}
     for d, p, q in s:gmatch("(%d+):(%d+):(%d*)") do
-        points[#points + 1] = { day = tonumber(d), price = tonumber(p), qty = tonumber(q) }
+        local first = tonumber(d)
+        local day = recordDay(first)
+        -- an old one-per-day record sits in the middle of its day
+        local t = first < DAY_LIMIT and (first + 0.5) or (first / DAY)
+        points[#points + 1] = { day = day, t = t, price = tonumber(p), qty = tonumber(q) }
     end
     cache[id] = { s = s, market = ns.market, points = points }
     return points

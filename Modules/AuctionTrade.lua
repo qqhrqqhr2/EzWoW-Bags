@@ -354,7 +354,9 @@ local function readItems(itemKey)
         local r = a.GetItemSearchResultInfo(itemKey, i)
         local buyout, qty = r and num(r.buyoutAmount), math.max(1, r and num(r.quantity) or 1)
         if buyout and buyout > 0 and r.auctionID then
-            rows[#rows + 1] = { price = math.floor(buyout / qty + .5), total = buyout, qty = qty, owner = ownerOf(r),
+            -- buyoutAmount is the price of one (the game's own list shows it as the unit
+            -- price); an auction of several costs that times its quantity
+            rows[#rows + 1] = { price = buyout, total = buyout * qty, qty = qty, owner = ownerOf(r),
                 own = r.containsOwnerItem and true or false, auctionID = r.auctionID, link = plainName(r.itemLink) }
             total = total + qty
         end
@@ -404,7 +406,8 @@ local function updateDialog()
     D.qty:SetText(qtyText)
     local ready = p.total ~= nil
     if ready then
-        D.unit:SetText(ns.Text("buyUnit") .. ": " .. ns.Money(math.floor(p.total / math.max(1, p.qty) + .5)))
+        -- an item auction carries its own price (p.unit); a commodity's comes from the total
+        D.unit:SetText(ns.Text("buyUnit") .. ": " .. ns.Money(p.unit or math.floor(p.total / math.max(1, p.qty) + .5)))
         D.total:SetText(ns.Text("buyTotal") .. ": " .. ns.Money(p.total))
     else
         D.unit:SetText(ns.Text("buyChecking")); D.total:SetText("")
@@ -414,7 +417,7 @@ local function updateDialog()
     if ready and enough then
         local H = ns.History
         local avg = H and H.Average and H.Average(p.itemID, H.TREND_DAYS, H.Day())
-        local unit = p.total / math.max(1, p.qty)
+        local unit = p.unit or p.total / math.max(1, p.qty)
         if avg and avg > 0 and unit > avg * 1.5 then
             warn = string.format(ns.Text("buyPricey"), ns.MoneyShort(avg), math.floor((unit / avg - 1) * 100 + .5))
         end
@@ -487,7 +490,7 @@ function T.Buy(index)
         openDialog({ kind = "commodity", itemID = state.itemID, qty = qty })
     else
         if not api().PlaceBid then return end
-        openDialog({ kind = "item", itemID = state.itemID, qty = row.qty, total = row.total, auctionID = row.auctionID, link = row.link })
+        openDialog({ kind = "item", itemID = state.itemID, qty = row.qty, total = row.total, unit = row.price, auctionID = row.auctionID, link = row.link })
     end
 end
 -- The cheapest offers that make up qty (own offers left out).
@@ -534,7 +537,7 @@ function T.BuyCheapest()
     else
         if not api().PlaceBid then return end
         local first = picked[1]
-        openDialog({ kind = "item", itemID = state.itemID, qty = first.qty, total = first.total, auctionID = first.auctionID,
+        openDialog({ kind = "item", itemID = state.itemID, qty = first.qty, total = first.total, unit = first.price, auctionID = first.auctionID,
             link = first.link, queue = picked, step = 1, queueQty = got, queueTotal = total })
     end
 end
@@ -543,7 +546,7 @@ local function purchaseDone(success)
     if success and p and p.queue and p.step < #p.queue then
         p.step = p.step + 1
         local r = p.queue[p.step]
-        p.qty, p.total, p.auctionID, p.link, p.sent = r.qty, r.total, r.auctionID, r.link, false
+        p.qty, p.total, p.unit, p.auctionID, p.link, p.sent = r.qty, r.total, r.price, r.auctionID, r.link, false
         if D then updateDialog(); D:Show(); D:Raise() end
         return
     end
@@ -699,6 +702,8 @@ function T.CreatePanel()
 end
 -- for the sell list: the panel it lives in, and the item being sold right now
 function T.GetPanel() return P end
+-- the item open in the buy panel (its listings view), for the price tab
+function T.CurrentItemID() return state.view == "detail" and tonumber(state.itemID) or nil end
 function T.SellInfo() return sell end
 function T.ActiveSellFrame() return activeSellFrame() end
 function T.IsCommodity(loc) return isCommodity(loc) end
@@ -722,10 +727,48 @@ function T.ShowPanel(force)
     T.Dock(ahFrame())
     if not P:IsShown() then P:Show() end
 end
+-- The game's own auction list: an item picked there opens here too (and in the
+-- price window). The game has already sent its search, so no query of our own
+-- goes out - its results reach this panel through the same events.
+local function searchResultsReady(itemKey, itemID, commodity)
+    local a = api()
+    if commodity then
+        local ok, n = pcall(a.GetNumCommoditySearchResults, itemID)
+        return ok and (num(n) or 0) > 0
+    end
+    local ok, n = pcall(a.GetNumItemSearchResults, itemKey)
+    return ok and (num(n) or 0) > 0
+end
+function T.Follow(itemKey)
+    if type(itemKey) ~= "table" or not T.IsOpen() then return end
+    T.ShowPanel()
+    if not (P and P:IsShown()) then return end
+    local itemID = num(itemKey.itemID)
+    if not itemID then return end
+    local info = keyInfo(itemKey)
+    state.view, state.key, state.itemID, state.rows, state.offset = "detail", itemKey, itemID, {}, 0
+    state.commodity = info and info.isCommodity
+    state.waitDetail = true
+    T.SetStatus(ns.Text("buySearching"))
+    T.RenderPanel()
+    -- results the game already had arrive with no new event: read them shortly
+    C_Timer.After(0.5, function()
+        if not (state.waitDetail and state.itemID == itemID) then return end
+        if not searchResultsReady(itemKey, itemID, state.commodity) then return end
+        if state.commodity then detailEvent(itemID, nil) else detailEvent(nil, itemKey) end
+    end)
+end
+
 local function hookFrame()
     local ah = ahFrame()
     if not ah or T.hooked then return ah ~= nil end
     T.hooked = true
+    if type(ah.SelectBrowseResult) == "function" then
+        hooksecurefunc(ah, "SelectBrowseResult", function(_, browseResult)
+            local key = type(browseResult) == "table" and browseResult.itemKey
+            if key and ns.ready then pcall(T.Follow, key) end
+        end)
+    end
     ah:HookScript("OnShow", function() if ns.ready and ns.cfg.ahBuyPanel then T.ShowPanel() end end)
     ah:HookScript("OnHide", function() if P then P:Hide() end; closeDialog() end)
     return true

@@ -1,6 +1,6 @@
 local _, ns = ...
--- Line graph of an item's daily minimum auction price over the last 30 days, with the listed
--- quantity as thin bars. Drawn with plain textures and line objects in the window's colors.
+-- Line graph of an item's lowest auction price at each lookup over the last 30 days, with the
+-- listed quantity as thin bars. Drawn with plain textures and line objects in the window's colors.
 local G = {}; ns.PriceGraph = G
 G.DAYS, G.HEIGHT = 30, 178
 local PAD_L, PAD_R, PAD_T, PAD_B = 74, 14, 36, 22
@@ -67,7 +67,12 @@ function G.Draw(f, id)
     local first = today - G.DAYS + 1
     local byDay, points = {}, {}
     for _, p in ipairs(ns.History.Points(id)) do
-        if p.day >= first and p.day <= today then byDay[p.day] = p; points[#points + 1] = p end
+        if p.day >= first and p.day <= today then
+            points[#points + 1] = p
+            -- the hover column of a day shows that day's lowest lookup
+            local best = byDay[p.day]
+            if not best or p.price < best.price then byDay[p.day] = p end
+        end
     end
     local price, pct = ns.History.Trend(id)
     local trend = ns.History.TrendText(id)
@@ -111,28 +116,40 @@ function G.Draw(f, id)
     lo, hi = math.max(0, lo - span * .12), hi + span * .12
     local maxQty = 0
     for _, p in ipairs(points) do maxQty = math.max(maxQty, p.qty or 0) end
-    local step = width / (G.DAYS - 1)
-    local function X(day) return (day - first) * step end
+    -- one column per day; a lookup sits at its time within the day
+    local step = width / G.DAYS
+    local function X(t) return (t - first) * step end
     local function Y(value) return (value - lo) / (hi - lo) * height end
-    for i = 0, 2 do
-        local value = lo + (hi - lo) * (i / 2)
-        local guide = nextTex(); guide:SetColorTexture(.204, .298, .357, .45); guide:ClearAllPoints()
-        guide:SetPoint("BOTTOMLEFT", plot, "BOTTOMLEFT", 0, Y(value)); guide:SetPoint("BOTTOMRIGHT", plot, "BOTTOMLEFT", width, Y(value)); guide:SetHeight(1)
-        local label = nextLabel(); label:ClearAllPoints(); label:SetJustifyH("RIGHT"); label:SetWidth(PAD_L - 8)
-        label:SetPoint("RIGHT", plot, "BOTTOMLEFT", -6, Y(value)); label:SetText(ns.MoneyShort(value, 9))
+    -- a guide line at every price that has a point; its label on the left
+    -- unless it would sit on top of the one below it
+    local levels, seen = {}, {}
+    for _, p in ipairs(points) do
+        if not seen[p.price] then seen[p.price] = true; levels[#levels + 1] = p.price end
+    end
+    table.sort(levels)
+    local lastLabelY
+    for _, value in ipairs(levels) do
+        local y = Y(value)
+        local guide = nextTex(); guide:SetColorTexture(.204, .298, .357, .6); guide:ClearAllPoints()
+        guide:SetPoint("BOTTOMLEFT", plot, "BOTTOMLEFT", 0, y); guide:SetPoint("BOTTOMRIGHT", plot, "BOTTOMLEFT", width, y); guide:SetHeight(1)
+        if not lastLabelY or y - lastLabelY >= 11 then
+            local label = nextLabel(); label:ClearAllPoints(); label:SetJustifyH("RIGHT"); label:SetWidth(PAD_L - 8)
+            label:SetPoint("RIGHT", plot, "BOTTOMLEFT", -6, y); label:SetText(ns.MoneyShort(value, 9))
+            lastLabelY = y
+        end
     end
     for _, day in ipairs({ first, first + math.floor(G.DAYS / 2), today }) do
         local label = nextLabel(); label:ClearAllPoints(); label:SetWidth(50); label:SetJustifyH("CENTER")
-        label:SetPoint("TOP", plot, "BOTTOMLEFT", X(day), -4); label:SetText(dayLabel(day))
+        label:SetPoint("TOP", plot, "BOTTOMLEFT", X(day + 0.5), -4); label:SetText(dayLabel(day))
     end
     -- Quantity bars at the bottom (up to a third of the height).
     if maxQty > 0 then
-        local barWidth = math.max(2, step * .45)
+        local barWidth = math.max(2, step * .25)
         for _, p in ipairs(points) do
             if p.qty and p.qty > 0 then
                 local bar = nextTex(); bar:SetColorTexture(.29, .45, .55, .55); bar:ClearAllPoints()
                 bar:SetSize(barWidth, math.max(1, p.qty / maxQty * height * .33))
-                bar:SetPoint("BOTTOM", plot, "BOTTOMLEFT", X(p.day), 1)
+                bar:SetPoint("BOTTOM", plot, "BOTTOMLEFT", X(p.t), 1)
             end
         end
     end
@@ -143,19 +160,19 @@ function G.Draw(f, id)
         local line = nextLine()
         if line.SetStartPoint then
             line:SetColorTexture(accent[1], accent[2], accent[3], .9); line:SetThickness(2)
-            line:SetStartPoint("BOTTOMLEFT", plot, X(a.day), Y(a.price)); line:SetEndPoint("BOTTOMLEFT", plot, X(b.day), Y(b.price))
+            line:SetStartPoint("BOTTOMLEFT", plot, X(a.t), Y(a.price)); line:SetEndPoint("BOTTOMLEFT", plot, X(b.t), Y(b.price))
         else line:Hide() end
     end
     for _, p in ipairs(points) do
         local dot = nextTex(); dot:SetColorTexture(1, .86, .6, 1); dot:ClearAllPoints(); dot:SetSize(5, 5)
-        dot:SetPoint("CENTER", plot, "BOTTOMLEFT", X(p.day), Y(p.price))
+        dot:SetPoint("CENTER", plot, "BOTTOMLEFT", X(p.t), Y(p.price))
     end
     -- One hover column per day.
     for day = first, today do
         local zone = nextZone(); zone:ClearAllPoints()
         zone:SetSize(math.max(3, step), height)
-        zone:SetPoint("BOTTOM", plot, "BOTTOMLEFT", X(day), 0)
-        zone.day, zone.point, zone.x = day, byDay[day], X(day)
+        zone:SetPoint("BOTTOM", plot, "BOTTOMLEFT", X(day + 0.5), 0)
+        zone.day, zone.point, zone.x = day, byDay[day], X(day + 0.5)
     end
     finish()
 end
