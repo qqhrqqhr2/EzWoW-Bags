@@ -49,4 +49,5 @@ Modules\AuctionSellList.lua
 UI\Window.lua
 UI\LanguageDropdown.lua
 UI\Options.lua
+UI\BlizzardPanel.lua
 Core\Events.lua

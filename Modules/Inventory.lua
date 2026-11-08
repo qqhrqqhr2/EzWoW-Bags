@@ -55,6 +55,7 @@ local function tooltipFlags(e)
     local cached = tooltipCache[key]
     if cached then
         e.quest, e.bound, e.bindType = e.quest or cached.quest, e.bound or cached.bound, cached.bindType or e.bindType
+        e.startsQuest = cached.startsQuest
         return
     end
     if not scanTooltip then
@@ -70,10 +71,11 @@ local function tooltipFlags(e)
             if bind and text == bind then e.bindType = 2 end
             if bound and text == bound then e.bound = true end
             if ITEM_BIND_QUEST and text == ITEM_BIND_QUEST then e.quest = true end
+            if ITEM_STARTS_QUEST and text == ITEM_STARTS_QUEST then e.startsQuest = true end
         end
     end
     scanTooltip:Hide()
-    if e.name ~= "#" .. e.id then tooltipCache[key] = { quest = e.quest, bound = e.bound, bindType = e.bindType } end
+    if e.name ~= "#" .. e.id then tooltipCache[key] = { quest = e.quest, bound = e.bound, bindType = e.bindType, startsQuest = e.startsQuest } end
 end
 function ns.ScanStorage(storage)
     if storage == "bank" and not ns.state.bank then return end
@@ -101,10 +103,15 @@ function ns.ScanStorage(storage)
                 if questFn then
                     local quest = questFn(bag, slot)
                     item.quest = type(quest) == "table" and (quest.isQuestItem == true or quest.isQuestItem == 1 or quest.questID ~= nil) or quest == true or quest == 1
+                    -- The client reports the quest only once it is accepted (isActive)
+                    item.questActive = type(quest) == "table" and quest.questID ~= nil and quest.isActive and true or nil
+                    item.questStart = type(quest) == "table" and quest.questID ~= nil and not quest.isActive or nil
                 end
                 ns.Enrich(item)
                 if item.name == "#" .. item.id then ns.waitingInventory[item.id] = true end
                 tooltipFlags(item)
+                -- "!" on items that start a quest not accepted yet (tooltip line when the API has no quest)
+                if item.startsQuest and not item.questActive then item.questStart = true end
                 if isBag then
                     if ns.hasInitialScan and GetTime() >= (ns.baselineUntil or 0) and not ns.seen[item.id] then ns.newItems[item.id] = true end
                     ns.seen[item.id] = true

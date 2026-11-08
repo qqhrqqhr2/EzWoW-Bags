@@ -3,7 +3,8 @@ local frame = CreateFrame("Frame")
 local events = { "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_LOGOUT", "BAG_UPDATE_DELAYED", "BAG_UPDATE", "ITEM_LOCK_CHANGED",
     "GET_ITEM_INFO_RECEIVED", "PLAYER_MONEY", "BANKFRAME_OPENED", "BANKFRAME_CLOSED", "PLAYERBANKSLOTS_CHANGED", "BAG_CONTAINER_UPDATE", "BANK_TABS_CHANGED",
     "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "AUCTION_ITEM_LIST_UPDATE", "REPLICATE_ITEM_LIST_UPDATE",
-    "MERCHANT_SHOW", "MERCHANT_CLOSED", "MAIL_SHOW", "MAIL_CLOSED", "TRADE_SHOW", "TRADE_CLOSED", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_EQUIPMENT_CHANGED", "BAG_UPDATE_COOLDOWN" }
+    "MERCHANT_SHOW", "MERCHANT_CLOSED", "MAIL_SHOW", "MAIL_CLOSED", "TRADE_SHOW", "TRADE_CLOSED", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_EQUIPMENT_CHANGED", "BAG_UPDATE_COOLDOWN",
+    "QUEST_ACCEPTED", "QUEST_REMOVED" }
 for _, event in ipairs(events) do pcall(frame.RegisterEvent, frame, event) end
 -- Default bag replacement. The Blizzard bag functions are never replaced (other default UI code
 -- calls them); they are post-hooked, and the default player bag frames hide themselves on show.
@@ -161,7 +162,8 @@ frame:SetScript("OnEvent", function(_, event, arg, success)
     if event == "PLAYER_LOGIN" then init(); return end
     if not ns.ready then return end
     if event == "BAG_UPDATE_DELAYED" or event == "BAG_UPDATE" or event == "ITEM_LOCK_CHANGED"
-        or event == "PLAYERBANKSLOTS_CHANGED" or event == "BAG_CONTAINER_UPDATE" or event == "BANK_TABS_CHANGED" or event == "PLAYER_EQUIPMENT_CHANGED" then
+        or event == "PLAYERBANKSLOTS_CHANGED" or event == "BAG_CONTAINER_UPDATE" or event == "BANK_TABS_CHANGED" or event == "PLAYER_EQUIPMENT_CHANGED"
+        or event == "QUEST_ACCEPTED" or event == "QUEST_REMOVED" then
         ns.Dirty()
         -- A new or bigger bag (or bank tab) needs more item buttons; built out of combat.
         if event == "BAG_CONTAINER_UPDATE" or event == "BANK_TABS_CHANGED" then
