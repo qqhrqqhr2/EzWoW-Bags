@@ -50,7 +50,7 @@ function ns.ToggleOptions()
         text:SetFontObject("GameFontNormal"); text:SetTextColor(unpack(UI.Theme.accent))
         local line = f:CreateTexture(nil, "ARTWORK")
         line:SetColorTexture(.204, .298, .357, .85); line:SetHeight(1)
-        line:SetPoint("TOPLEFT", 20, -y - 18); line:SetPoint("TOPRIGHT", -20, -y - 18)
+        line:SetPoint("TOPLEFT", 20, -y - 18); line:SetWidth(400)
         y = y + 26
     end
     section("일반", "General")
