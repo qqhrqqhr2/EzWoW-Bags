@@ -466,7 +466,28 @@ function ns.CreateWindow()
         b:SetPoint("TOPLEFT", 16 + (i - 1) * 111, -65); b:SetHeight(28); UI.SetIcon(b, UI.icons[mode]); f.tabs[mode] = b
     end
     f.search = UI.Edit(f, 360); f.search:SetPoint("TOPRIGHT", -16, -66)
-    f.search:SetScript("OnTextChanged", function() ns.filterCategory = nil; if ns.scroll then ns.scroll:SetVerticalScroll(0); ns.Refresh() end end)
+    f.search:SetTextInsets(8, 26, 2, 2)
+    -- a search in effect is easy to miss: accent border and a clear button while there is text
+    f.searchClear = UI.Frame("Button", nil, f.search); f.searchClear:SetSize(20, 20)
+    f.searchClear:SetPoint("RIGHT", -3, 0)
+    f.searchClear.text = f.searchClear:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    f.searchClear.text:SetPoint("CENTER"); f.searchClear.text:SetText("\195\151")
+    f.searchClear.text:SetTextColor(unpack(UI.Theme.muted))
+    f.searchClear:SetScript("OnEnter", function(self) self.text:SetTextColor(unpack(UI.Theme.warn)) end)
+    f.searchClear:SetScript("OnLeave", function(self) self.text:SetTextColor(unpack(UI.Theme.muted)) end)
+    f.searchClear:SetScript("OnClick", function() f.search:SetText(""); f.search:ClearFocus() end)
+    f.searchClear:Hide()
+    local function searchLook()
+        local active = (f.search:GetText() or "") ~= ""
+        f.searchClear:SetShown(active)
+        if f.search.SetBackdropBorderColor then
+            f.search:SetBackdropBorderColor(unpack(active and UI.Theme.accent or UI.Theme.border))
+        end
+    end
+    f.search:SetScript("OnTextChanged", function()
+        searchLook()
+        ns.filterCategory = nil; if ns.scroll then ns.scroll:SetVerticalScroll(0); ns.Refresh() end
+    end)
     f.search:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:AddLine(ns.Text("help"), 1, 1, 1, true); GameTooltip:Show()
     end)
