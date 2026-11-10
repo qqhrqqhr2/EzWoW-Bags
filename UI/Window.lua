@@ -439,6 +439,18 @@ local function renderHeader(section, index, x, y, width)
     b:Show()
     return height
 end
+-- The scroll range follows the actual viewport after resizing or changing tabs.
+local function syncScrollBar()
+    local scroll, content = ns.scroll, ns.content
+    if not scroll or not content then return end
+    if ns.LayoutLocked() then ns.layoutPending = true; return end
+    local range = math.max(0, content:GetHeight() - scroll:GetHeight())
+    if range <= 1 then range = 0 end
+    local bar = scroll.ScrollBar or _G.EzWoWBagsScrollScrollBar
+    if bar then bar:SetShown(range > 0) end
+    local offset = math.max(0, math.min(range, scroll:GetVerticalScroll()))
+    if scroll:GetVerticalScroll() ~= offset then scroll:SetVerticalScroll(offset) end
+end
 function ns.CreateWindow()
     local f = UI.Frame("Frame", "EzWoWBagsWindow", UIParent); ns.window = f
     f:SetSize(850, 610); f:SetScale(ns.cfg.scale); f:SetPoint("CENTER"); f:SetFrameStrata("HIGH")
@@ -502,8 +514,61 @@ function ns.CreateWindow()
     end)
     ns.scroll = CreateFrame("ScrollFrame", "EzWoWBagsScroll", f, "UIPanelScrollFrameTemplate")
     ns.scroll:SetPoint("TOPLEFT", 148, -159); ns.scroll:SetPoint("BOTTOMRIGHT", -28, 100)
+    -- Dragging changes the item columns and keeps the chosen height; out of combat only.
+    local grip = CreateFrame("Button", nil, f)
+    grip:SetSize(16, 16); grip:SetPoint("BOTTOMRIGHT", -2, 2); grip:SetFrameLevel(f:GetFrameLevel() + 20)
+    grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+    grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+    grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+    local function stopResize(self)
+        self.drag = nil; self:SetScript("OnUpdate", nil)
+        if ns.UpdateOptions then pcall(ns.UpdateOptions) end
+    end
+    local function dragTick(self)
+        local d = self.drag
+        if not d then return end
+        if ns.LayoutLocked() or (IsMouseButtonDown and not IsMouseButtonDown("LeftButton")) then
+            stopResize(self); return
+        end
+        local x, y = GetCursorPosition()
+        x, y = x / d.scale, y / d.scale
+        local cols = math.max(6, math.min(20, d.cols + math.floor((x - d.x) / (ns.cfg.size + 4) + .5)))
+        local height = math.max(399, math.min(1400, math.floor(d.height + (d.y - y) + .5)))
+        if cols ~= ns.cfg.columns or height ~= ns.cfg.windowHeight then
+            ns.cfg.columns, ns.cfg.windowHeight = cols, height
+            ns.Refresh()
+        end
+    end
+    grip:SetScript("OnMouseDown", function(self, mouse)
+        if ns.LayoutLocked() then return end
+        -- right click: the height follows the contents again
+        if mouse == "RightButton" then ns.cfg.windowHeight, ns.cfg.maxHeight = nil, nil; ns.Refresh(); return end
+        if mouse ~= "LeftButton" then return end
+        local scale = f:GetEffectiveScale()
+        local x, y = GetCursorPosition()
+        -- The graph is added by Render, so the saved height excludes it.
+        local graphHeight = f.graph and f.graph:IsShown() and (ns.PriceGraph.HEIGHT + 8) or 0
+        self.drag = { x = x / scale, y = y / scale, scale = scale, cols = ns.cfg.columns,
+            height = math.max(399, f:GetHeight() - graphHeight) }
+        self:SetScript("OnUpdate", dragTick)
+    end)
+    grip:SetScript("OnMouseUp", stopResize)
+    grip:SetScript("OnHide", stopResize)
+    grip:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(ns.Lang and ns.Lang("끌어서 창 크기 조절", "Drag to resize") or "Drag to resize", 1, 1, 1)
+        GameTooltip:AddLine(ns.Lang and ns.Lang("오른쪽 클릭: 높이 자동", "Right-click: automatic height") or "Right-click: automatic height", .7, .75, .8)
+        GameTooltip:Show()
+    end)
+    grip:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    f.resizeGrip = grip
     ns.scroll:HookScript("OnVerticalScroll", function() if ns.mode == "prices" then ns.priceScrollDirty = true end end)
     ns.content = CreateFrame("Frame", nil, ns.scroll); ns.content:SetSize(626, 1); ns.scroll:SetScrollChild(ns.content)
+    ns.scroll:HookScript("OnScrollRangeChanged", syncScrollBar)
+    ns.scroll:HookScript("OnSizeChanged", function()
+        syncScrollBar()
+        if ns.mode == "prices" then ns.priceScrollDirty = true end
+    end)
     f.emptyMessage = UI.Label(ns.content, ""); f.emptyMessage:SetPoint("TOPLEFT", 12, -16); f.emptyMessage:SetWidth(580)
     f.footer = UI.Label(f, ""); f.footer:SetPoint("BOTTOMLEFT", 16, 73); f.footer:SetWidth(800)
     f.queue = UI.Label(f, ""); f.queue:SetPoint("BOTTOMLEFT", 16, 46); f.queue:SetWidth(610)
@@ -571,7 +636,11 @@ local function renderBags(snapshot)
         local b = bagButtons[i]
         if not b then
             b = UI.Button(ns.window, "", UI.Sizes.bagButton, function(self)
-                ns.DropCursorIntoBag(self.bag)
+                -- an item on the cursor goes into the bag; otherwise the bag opens in the default bag frame
+                if API.CursorBusy() then ns.DropCursorIntoBag(self.bag); return end
+                if ns.storage == "bags" and ns.selected == ns.player then
+                    ns.ToggleBlizzardBag(self.bag)
+                end
             end)
             b:SetHeight(UI.Sizes.bagButton); b.text:Hide()
             b.bagIcon = b:CreateTexture(nil, "ARTWORK"); b.bagIcon:SetPoint("TOPLEFT", 3, -3); b.bagIcon:SetPoint("BOTTOMRIGHT", -3, 3)
@@ -607,13 +676,15 @@ local function renderBags(snapshot)
         b:SetBackdropBorderColor(unpack(UI.Theme.accent)); b:Show()
     end
     for i = #ordered + 1, #bagButtons do bagButtons[i]:Hide() end
+    ns.bagBarCount = #ordered
 end
 function ns.BagLayout()
     local lanes = ns.cfg.view == "sections" and ns.cfg.sectionColumns or 1
     local columns, step = ns.cfg.columns, ns.cfg.size + 4
     local layout = { lanes = lanes, columns = {}, widths = {}, offsets = {} }
     local contentWidth = columns * step - lanes * 4 + (lanes - 1) * 10
-    layout.width = math.max(500, contentWidth + 176)
+    -- never narrower than the bottom row: the bag buttons, then the sort and new-item buttons
+    layout.width = math.max(500, 41 * (ns.bagBarCount or 7) + 270, contentWidth + 176)
     layout.contentWidth = layout.width - 176
     local spare = layout.contentWidth - contentWidth
     local x = 0
@@ -622,6 +693,8 @@ function ns.BagLayout()
         local extra = math.floor(spare / lanes) + (lane <= spare % lanes and 1 or 0)
         layout.columns[lane] = count
         layout.widths[lane] = count * step - 4 + extra
+        -- a window wider than the set columns: fill the lane with as many items as fit
+        layout.columns[lane] = math.max(count, math.floor((layout.widths[lane] + 4) / step))
         layout.offsets[lane] = x
         x = x + layout.widths[lane] + 10
     end
@@ -772,7 +845,7 @@ function ns.Render()
         ns.visiblePriceWaiting = {}
         h = #catalog.rows * 42
         local first = math.max(1, math.min(#catalog.rows, math.floor(ns.scroll:GetVerticalScroll() / 42) + 1))
-        local visible = math.min(18, math.ceil(math.min(610, ns.scroll:GetHeight()) / 42) + 2)
+        local visible = math.max(1, math.ceil(ns.scroll:GetHeight() / 42) + 2)
         for index = first, math.min(#catalog.rows, first + visible - 1) do
             local id = catalog.rows[index]
             local p = market.items[id]
@@ -796,6 +869,7 @@ function ns.Render()
         if catalog.error then f.status:SetText(ns.Text("queryError") .. catalog.error)
         elseif not catalog.done then f.status:SetText(ns.T("search") .. " … " .. (catalog.cursor - 1) .. "/" .. #catalog.ids) end
         f.footer:SetText(ns.T("prices") .. " · " .. #catalog.rows .. " · " .. ns.market .. "   |cff8398a6" .. ns.Text("priceClickHint") .. "|r")
+        for _, label in ipairs(ns.content.freeLabels or {}) do label:Hide() end
     else
         ns.visiblePriceWaiting = nil
         if ns.cfg.view == "grid" or ns.cfg.view == "list" then
@@ -827,19 +901,58 @@ function ns.Render()
             heights[lane] = y + 12
         end
         h = 0; for _, height in ipairs(heights) do h = math.max(h, height) end
+        local labelsUsed = 0
         if ns.cfg.emptySlots then
-            -- keyring slots only take keys, so they are not drawn as free space
-            local shown = 0
+            -- keyring slots only take keys, so they are not drawn as free space. Profession and
+            -- reagent bags take only their own kind of items: their free slots are drawn apart,
+            -- one group per bag under its name, so the general free space is not overstated.
+            -- across the whole content width (the window may be wider than the set columns)
+            local cols = math.max(ns.cfg.columns, math.floor((width + gap) / (size + gap)))
+            local general, groups, byBag = {}, {}, {}
             for _, e in ipairs(snapshot and snapshot.free or {}) do
-                if ns.BagKind(e, ns.storage) ~= "keys" then
-                    shown = shown + 1; n = n + 1
-                    local cols = ns.cfg.columns
-                    renderItem(e, n, ((shown - 1) % cols) * (size + gap), h + math.floor((shown - 1) / cols) * (size + gap), size, size)
-                    items[n]:SetScript("OnEnter", enterItem)
+                local kind = ns.BagKind(e, ns.storage)
+                if kind == "general" then general[#general + 1] = e
+                elseif kind ~= "keys" then
+                    local g = byBag[e.bag]
+                    if not g then g = { bag = e.bag, kind = kind, slots = {} }; byBag[e.bag] = g; groups[#groups + 1] = g end
+                    g.slots[#g.slots + 1] = e
                 end
             end
-            h = h + math.ceil(shown / ns.cfg.columns) * (size + gap)
+            local function drawSlots(list, tint)
+                for i, e in ipairs(list) do
+                    n = n + 1
+                    renderItem(e, n, ((i - 1) % cols) * (size + gap), h + math.floor((i - 1) / cols) * (size + gap), size, size)
+                    items[n]:SetScript("OnEnter", enterItem)
+                    if tint then items[n]:SetBackdropBorderColor(tint[1], tint[2], tint[3], 1) end
+                end
+                h = h + math.ceil(#list / cols) * (size + gap)
+            end
+            drawSlots(general)
+            ns.content.freeLabels = ns.content.freeLabels or {}
+            for _, g in ipairs(groups) do
+                labelsUsed = labelsUsed + 1
+                local label = ns.content.freeLabels[labelsUsed]
+                if not label then
+                    label = UI.Label(ns.content, "", 11); label:SetTextColor(.55, .85, .45)
+                    ns.content.freeLabels[labelsUsed] = label
+                end
+                local nameFn = ns.selected == ns.player and API.Container("GetBagName")
+                local name
+                if nameFn then
+                    local ok, v = pcall(nameFn, g.bag)
+                    if ok then name = v end
+                end
+                if type(name) ~= "string" or (issecretvalue and issecretvalue(name)) or name == "" then
+                    name = g.kind == "reagent" and ns.T("materials") or ns.Text("special")
+                end
+                label:ClearAllPoints(); label:SetPoint("TOPLEFT", 2, -(h + 6))
+                label:SetText(name .. " · " .. ns.T("empty") .. " " .. #g.slots)
+                label:Show()
+                h = h + 24
+                drawSlots(g.slots, { .35, .65, .3 })
+            end
         end
+        for i = labelsUsed + 1, #(ns.content.freeLabels or {}) do ns.content.freeLabels[i]:Hide() end
     end
     if ns.content:GetHeight() ~= math.max(1, h + 12) then ns.content:SetHeight(math.max(1, h + 12)) end
     hideUnusedSecure()
@@ -847,8 +960,11 @@ function ns.Render()
     if n == 0 then
         f.emptyMessage:SetText(prices and (ns.T("prices") .. ": 0\n\n" .. (shared and ns.Text("ahShared") or ns.Auction.status or (job and (ns.T("scan") .. " …") or ns.Text("ahClosed")))) or (err and ns.Text("queryError") .. err or ns.T("empty")))
     end
-    local desiredHeight = math.max(399, math.min(669 + graphHeight, math.max(h + 270 + graphHeight, (ns.sidebarHeight or 0) + 265)))
+    -- a height set with the resize grip is kept; otherwise the window follows its contents
+    local desiredHeight = ns.cfg.windowHeight and (math.max(399, ns.cfg.windowHeight) + graphHeight)
+        or math.max(399, math.min(669 + graphHeight, math.max(h + 272 + graphHeight, (ns.sidebarHeight or 0) + 265)))
     ns.ResizeWindow(desiredWidth, desiredHeight)
+    syncScrollBar()
     if f.sideScroll:GetHeight() ~= math.max(100, desiredHeight - 258) then f.sideScroll:SetHeight(math.max(100, desiredHeight - 258)) end
 end
 -- Opening or closing the protected window waits for the end of combat.

@@ -7,7 +7,7 @@ ns.defaults = {
     itemLevel = true, labels = true, emptySlots = false, newSection = false,
     itemSort = "name", sectionSort = "name", growUp = false,
     language = "auto", categories = {}, custom = {}, assignments = {},
-    autoSellJunk = true, autoRepair = true,
+    autoSellJunk = true, autoRepair = true, moneyLog = true, tradeWhisper = true,
     -- Auction house helpers
     ahSell = true, ahUndercutMode = "copper", ahUndercutCopper = 1, ahUndercutPercent = 1,
     ahBuyPanel = true, ahPriceTab = true, historyDays = 60, tooltipTrend = true,
@@ -57,6 +57,14 @@ function ns.InitDB()
     clamp("columns", 6, 20); clamp("sectionColumns", 1, 3); clamp("size", 28, 56)
     clamp("scale", .65, 1.4); clamp("opacity", .4, 1)
     s.columns, s.sectionColumns, s.size = math.floor(s.columns), math.floor(s.sectionColumns), math.floor(s.size)
+    -- Keep a height chosen before the resize setting was renamed.
+    if s.windowHeight == nil then s.windowHeight = s.maxHeight end
+    s.maxHeight = nil
+    -- window height set with the resize grip; nil: the height follows the contents
+    if s.windowHeight ~= nil then
+        local n = tonumber(s.windowHeight)
+        s.windowHeight = n and n == n and math.floor(math.max(399, math.min(1400, n))) or nil
+    end
     clamp("ahUndercutCopper", 0, 10000000); clamp("ahUndercutPercent", 0, 50); clamp("historyDays", 30, 120)
     s.ahUndercutCopper, s.historyDays = math.floor(s.ahUndercutCopper), math.floor(s.historyDays)
     if s.ahUndercutMode ~= "copper" and s.ahUndercutMode ~= "percent" then s.ahUndercutMode = "copper" end

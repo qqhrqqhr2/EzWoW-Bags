@@ -39,8 +39,10 @@ local function resolveBagHook(self)
     end
 end
 local resolver = CreateFrame("Frame")
+-- Default bag frames opened on purpose from this window's bag buttons: left open until they close.
+local allowed = {}
 local function noteBagCall(kind, source)
-    if not ns.cfg.replace or not ns.window then return end
+    if bagHook.allow or not ns.cfg.replace or not ns.window then return end
     local p = bagHook.pending
     if not p then
         p = { wasShown = ns.window:IsShown() }; bagHook.pending = p
@@ -64,6 +66,8 @@ local function isPlayerBagFrame(f)
     return f == _G.ContainerFrameCombinedBags or playerBag(blizzardBagID(f))
 end
 local function suppressBlizzardBag(f)
+    if bagHook.allow then allowed[f] = true; return end
+    if allowed[f] then return end
     if not ns.cfg.replace or not f:IsShown() or not isPlayerBagFrame(f) then return end
     -- Container frames are normally not protected; if one is, wait until combat ends.
     if locked(f) then bagHook.combatPending = true; return end
@@ -103,9 +107,22 @@ local function replaceBags()
     hook("CloseBackpack", function(f) noteBagCall("close", frameToken(f)) end)
     hook("CloseAllBags", function(f) noteBagCall("close", frameToken(f)) end)
     for _, f in ipairs(blizzardBagFrames()) do
-        if type(f.HookScript) == "function" then pcall(f.HookScript, f, "OnShow", suppressBlizzardBag) end
+        if type(f.HookScript) == "function" then
+            pcall(f.HookScript, f, "OnShow", suppressBlizzardBag)
+            pcall(f.HookScript, f, "OnHide", function(self) allowed[self] = nil end)
+        end
     end
     ns.ApplyBagReplacement()
+end
+-- Opens (or closes) one bag in the default bag frame, even while this window replaces the default bags.
+function ns.ToggleBlizzardBag(bag)
+    if type(bag) ~= "number" or type(ToggleBag) ~= "function" then return false end
+    bagHook.allow = true
+    local ok
+    if bag == ns.API.Keyring() and type(ToggleKeyRing) == "function" then ok = pcall(ToggleKeyRing)
+    else ok = pcall(ToggleBag, bag) end
+    bagHook.allow = nil
+    return ok
 end
 local function tooltips()
     GameTooltip:HookScript("OnTooltipCleared", function(tip) ns.ClearTooltipItem(tip) end)

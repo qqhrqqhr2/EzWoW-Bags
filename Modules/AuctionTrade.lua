@@ -144,7 +144,8 @@ local function sellOffers(p)
             local r = a.GetItemSearchResultInfo(p.itemKey, i)
             local buyout, qty = r and num(r.buyoutAmount), math.max(1, r and num(r.quantity) or 1)
             if buyout and buyout > 0 then
-                rows[#rows + 1] = { price = math.floor(buyout / qty + .5), qty = qty, own = r.containsOwnerItem and true or false }
+                -- buyoutAmount is already the price of one item; quantity counts the auctions grouped in the row
+                rows[#rows + 1] = { price = buyout, qty = qty, own = r.containsOwnerItem and true or false }
                 total = total + qty
             end
         end
@@ -161,6 +162,10 @@ local function applySell(p)
     if first then
         ns.Auction.RecordQuote(p.itemID, first.price, total)
         if first.own then price, note = first.price, fmt("sellOwn", ns.MoneyShort(first.price))
+        elseif ns.cfg.ahUndercutMode ~= "percent" and first.price % 100 == 0 then
+            -- a lowest price in whole silver: post at the same price (the newest of equal
+            -- auctions sells first); one with copper is undercut as set
+            price, note = first.price, fmt("sellMatch", ns.MoneyShort(first.price))
         else price = math.max(1, T.Undercut(first.price)) end
     else note = ns.Text("sellNoListings") end
     if price then
@@ -354,9 +359,9 @@ local function readItems(itemKey)
         local r = a.GetItemSearchResultInfo(itemKey, i)
         local buyout, qty = r and num(r.buyoutAmount), math.max(1, r and num(r.quantity) or 1)
         if buyout and buyout > 0 and r.auctionID then
-            -- buyoutAmount is the price of one (the game's own list shows it as the unit
-            -- price); an auction of several costs that times its quantity
-            rows[#rows + 1] = { price = buyout, total = buyout * qty, qty = qty, owner = ownerOf(r),
+            -- one row can hold several sellers' auctions of the same price (owners +n);
+            -- buying it (here and in the game's own list) gets one item for buyoutAmount
+            rows[#rows + 1] = { price = buyout, qty = qty, owner = ownerOf(r),
                 own = r.containsOwnerItem and true or false, auctionID = r.auctionID, link = plainName(r.itemLink) }
             total = total + qty
         end
@@ -365,6 +370,7 @@ local function readItems(itemKey)
     state.commodity, state.rows, state.total = false, rows, total
     if rows[1] then ns.Auction.RecordQuote(state.itemID, rows[1].price, total) end
 end
+local continueItemRun   -- next item of a several-item purchase (set below)
 local function detailEvent(itemID, itemKey)
     if state.view ~= "detail" or not P or not P:IsShown() then return end
     if itemID then
@@ -379,6 +385,7 @@ local function detailEvent(itemID, itemKey)
     T.SetStatus(#state.rows == 0 and ns.Text("buyNoResults") or nil)
     if #state.rows > 0 then T.UpdateEstimate() end
     T.RenderPanel()
+    if continueItemRun then continueItemRun() end
 end
 
 ---------------------------------------------------------------------------
@@ -399,9 +406,9 @@ local function updateDialog()
     D.icon:SetTexture(itemIcon(p.itemID) or "Interface\\Icons\\INV_Misc_QuestionMark")
     D.name:SetText(itemName(p.itemID))
     local qtyText = ns.Text("buyQty") .. ": |cffffffff" .. p.qty .. "|r"
-    if p.queue and #p.queue > 1 then
-        qtyText = qtyText .. "  |cffa7b9c5" .. string.format(ns.Text("buyStep"), p.step, #p.queue, p.queueQty,
-            ns.MoneyShort(p.queueTotal)) .. "|r"
+    if p.want and p.want > 1 then
+        qtyText = qtyText .. "  |cffa7b9c5" .. string.format(ns.Text("buyStep"), p.bought + 1, p.want, p.want,
+            ns.MoneyShort(p.runTotal)) .. "|r"
     end
     D.qty:SetText(qtyText)
     local ready = p.total ~= nil
@@ -455,8 +462,8 @@ local function createDialog()
         else ok = pcall(a.PlaceBid, p.auctionID, p.total) end
         p.sent = true
         if not ok then say(ns.Text("buyFailed")); purchase = nil end
-        -- a queue of auctions keeps the dialog for the next one (one click each)
-        if not (ok and p.queue and p.step < #p.queue) then D:Hide() else updateDialog() end
+        -- several items keep the dialog for the next one (one click each)
+        if not (ok and p.want and p.bought + 1 < p.want) then D:Hide() else updateDialog() end
     end)
     D.buy:SetPoint("BOTTOMLEFT", 14, 12)
     D.cancel = UI.Button(D, "", 150, function() D:Hide() end)
@@ -475,42 +482,68 @@ function T.Buy(index)
     local row = state.rows[index]
     if not row or not T.IsOpen() then return end
     if row.own then say(ns.Text("buyOwn")); return end
+    local qty
+    if IsShiftKeyDown and IsShiftKeyDown() then
+        qty = 0
+        for i = 1, index do local r = state.rows[i]; if not r.own then qty = qty + r.qty - (r.owned or 0) end end
+    else qty = tonumber(P.qty:GetText()) or 1 end
+    qty = math.max(1, math.floor(qty))
+    if state.total and state.total > 0 then qty = math.min(qty, state.total) end
     if state.commodity then
-        local qty
-        if IsShiftKeyDown and IsShiftKeyDown() then
-            qty = 0
-            for i = 1, index do local r = state.rows[i]; if not r.own then qty = qty + r.qty - (r.owned or 0) end end
-        else qty = tonumber(P.qty:GetText()) or 1 end
-        qty = math.max(1, math.floor(qty))
-        if state.total and state.total > 0 then qty = math.min(qty, state.total) end
         local a = api()
         if not a.StartCommoditiesPurchase then return end
         local ok = pcall(a.StartCommoditiesPurchase, state.itemID, qty)
         if not ok then say(ns.Text("buyFailed")); return end
         openDialog({ kind = "commodity", itemID = state.itemID, qty = qty })
     else
-        if not api().PlaceBid then return end
-        openDialog({ kind = "item", itemID = state.itemID, qty = row.qty, total = row.total, unit = row.price, auctionID = row.auctionID, link = row.link })
+        -- this row's price is the most paid; cheaper rows go first
+        T.StartItemRun(qty, row.price)
     end
 end
--- The cheapest offers that make up qty (own offers left out).
--- Returns the rows (with how many of each), the quantity found and its total price.
-local function cheapestRows(qty)
+-- The cheapest offers that make up qty (own offers left out; none above maxPrice).
+-- Returns the rows, the quantity found and its total price.
+local function cheapestRows(qty, maxPrice)
     local picked, got, total = {}, 0, 0
     for _, r in ipairs(state.rows) do
-        if got >= qty then break end
+        if got >= qty or (maxPrice and r.price > maxPrice) then break end
         local free = r.qty - (r.owned or 0)
         if not r.own and free > 0 then
-            if state.commodity then
-                local take = math.min(free, qty - got)
-                picked[#picked + 1] = r; got = got + take; total = total + take * r.price
-            else
-                -- an auction is bought whole
-                picked[#picked + 1] = r; got = got + r.qty; total = total + (r.total or r.price * r.qty)
-            end
+            local take = math.min(free, qty - got)
+            picked[#picked + 1] = r; got = got + take; total = total + take * r.price
         end
     end
     return picked, got, total
+end
+-- Items that are not commodities: each purchase is one item from the cheapest row,
+-- one click each. After a purchase the list is searched again (the row's auction
+-- changes), and the next item comes from the new results.
+local function nextItemRow(maxPrice)
+    for _, r in ipairs(state.rows) do
+        if r.price > maxPrice then return nil end
+        if not r.own and r.qty > 0 and r.auctionID then return r end
+    end
+    return nil
+end
+function T.StartItemRun(qty, maxPrice)
+    if not api().PlaceBid then return end
+    local r = nextItemRow(maxPrice)
+    if not r then say(ns.Text("buyNoResults")); return end
+    local _, got, total = cheapestRows(qty, maxPrice)
+    openDialog({ kind = "item", itemID = state.itemID, qty = 1, total = r.price, unit = r.price, auctionID = r.auctionID,
+        link = r.link, maxPrice = maxPrice, want = math.max(1, math.min(qty, got)), bought = 0, runTotal = total })
+end
+continueItemRun = function()
+    local p = purchase
+    if not p or not p.waitNext then return end
+    p.waitNext = false
+    local r = nextItemRow(p.maxPrice)
+    if not r then
+        say(string.format(ns.Text("buyRunEnd"), p.bought))
+        purchase = nil; closeDialog()
+        return
+    end
+    p.total, p.unit, p.auctionID, p.link = r.price, r.price, r.auctionID, r.link
+    if D and D:IsShown() then updateDialog() end
 end
 function T.UpdateEstimate()
     if not P or state.view ~= "detail" then return end
@@ -524,7 +557,7 @@ end
 function T.BuyCheapest()
     if not T.IsOpen() or state.view ~= "detail" then return end
     local qty = math.max(1, math.floor(tonumber(P.qty:GetText()) or 1))
-    local picked, got, total = cheapestRows(qty)
+    local _, got = cheapestRows(qty)
     if got == 0 then say(ns.Text("buyNoResults")); return end
     if state.commodity then
         local a = api()
@@ -535,20 +568,20 @@ function T.BuyCheapest()
         if not ok then say(ns.Text("buyFailed")); return end
         openDialog({ kind = "commodity", itemID = state.itemID, qty = qty })
     else
-        if not api().PlaceBid then return end
-        local first = picked[1]
-        openDialog({ kind = "item", itemID = state.itemID, qty = first.qty, total = first.total, unit = first.price, auctionID = first.auctionID,
-            link = first.link, queue = picked, step = 1, queueQty = got, queueTotal = total })
+        T.StartItemRun(qty, math.huge)
     end
 end
 local function purchaseDone(success)
     local p = purchase
-    if success and p and p.queue and p.step < #p.queue then
-        p.step = p.step + 1
-        local r = p.queue[p.step]
-        p.qty, p.total, p.unit, p.auctionID, p.link, p.sent = r.qty, r.total, r.price, r.auctionID, r.link, false
-        if D then updateDialog(); D:Show(); D:Raise() end
-        return
+    if success and p and p.want then
+        p.bought = p.bought + 1
+        if p.bought < p.want and state.view == "detail" and state.key and T.IsOpen() then
+            -- wait for the new results, then offer the next item (continueItemRun)
+            p.sent, p.total, p.auctionID, p.waitNext = false, nil, nil, true
+            if D then updateDialog(); D:Show(); D:Raise() end
+            T.Detail(state.key, state.itemID)
+            return
+        end
     end
     say(ns.Text(success and "buyDone" or "buyFailed"))
     purchase = nil; closeDialog()
@@ -706,6 +739,7 @@ function T.GetPanel() return P end
 function T.CurrentItemID() return state.view == "detail" and tonumber(state.itemID) or nil end
 function T.SellInfo() return sell end
 function T.ActiveSellFrame() return activeSellFrame() end
+function T.SellFrameItem(f) return sellFrameItem(f) end
 function T.IsCommodity(loc) return isCommodity(loc) end
 
 function T.Dock(ah)

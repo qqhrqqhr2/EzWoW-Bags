@@ -115,6 +115,16 @@ WoW Forever (`Interface: 16001`) · `/ezbags`, `/ezb`
 - 시세는 즉시구매 가격을 수량으로 나눈 **최저 단가**와 수집 시각입니다. 현재 살 수 있는 가격을 보장하지 않습니다.
 - 전문 기술 용도는 EzWoW - Profession Recipes의 포에버 제조법 데이터에서 뽑은 재료 529종입니다(따로 설치할 필요 없음).
 
+<!-- ezwow-pad-share -->
+### 게임패드
+- 게임패드 UI를 켜면 EzWoW 창을 패드로 다룰 수 있습니다. 방향키로 이동, A(✕)로 누르기, X(□)로 오른쪽 클릭, LB/RB로 스크롤, B(○)로 닫기입니다. 창 아래에 연결된 패드 모양으로 키 안내가 나옵니다.
+- 블리자드 창이 열려 있지 않을 때 **보기(Back) / Create 버튼**을 누르면 화면의 EzWoW 프레임(유틸리티 바, 퀘스트 목록 등)으로 이동합니다. 다시 누르거나 B를 누르면 돌아갑니다.
+- 다른 버튼을 쓰려면 설정 > 단축키 > 애드온 > EzWoW > "게임패드: EzWoW 창으로 이동/돌아가기"에 지정합니다(EzWoW-MapFinder가 설치돼 있을 때).
+
+### 기록 공유
+- 모든 EzWoW 애드온이 함께 쓰는 기록 공유가 **기본으로 켜져 있습니다**. 직접 확인한 퀘스트 NPC, 희귀 몬스터 목격, 아이템 드롭, 채집 위치를 다른 EzWoW 사용자와 나눕니다.
+- `/ezshare` 또는 `/공유`: `on` / `off` 켜기·끄기, `channel on` / `channel off` 서버 채널 사용, `status` 현재 상태와 기록 수.
+
 ---
 
 ## English
@@ -220,6 +230,15 @@ While the bank, mail, trade or a vendor is open, right-click a header → pick t
 - `EzWoW_BagsDB`: settings, every character's bags, bank and gold, auction prices and price history (one record per lookup) per realm and faction, per-character and account-wide item locks, the check marks of the sell list.
 - A price is the lowest buyout per item and the time it was seen — not a guarantee of what you can buy now.
 - Profession use comes from the WoW Forever recipe data of EzWoW - Profession Recipes (529 reagents; no need to install it).
+
+### Gamepad
+- With the gamepad UI on, EzWoW windows work with a gamepad: D-pad to move, A (✕) to press, X (□) for right-click, LB/RB to scroll, B (○) to close. A key guide in your pad's button style shows under the window.
+- With no game window open, press **View (Back) / Create** to move to the EzWoW frames on screen (Utility Bar, quest list and more). Press it again or B to go back.
+- To use another button, set Key Bindings > AddOns > EzWoW > "Gamepad: move to / leave the EzWoW frames" (with EzWoW-MapFinder installed).
+
+### Record sharing
+- Record sharing, used by all EzWoW addons, is **on by default**. Quest NPCs, rare monster sightings, item drops and gathering spots you have seen yourself are shared with other EzWoW users.
+- `/ezshare`: `on` / `off` to turn it on or off, `channel on` / `channel off` for the server channel, `status` for the current state and record counts.
 
 ---
 

@@ -99,6 +99,12 @@ function ns.ToggleOptions()
     check("autoRepair", "장비 자동 수리", "Auto-repair gear",
         "수리할 수 있는 상인을 열면 착용·가방의 모든 장비를 수리합니다. Shift를 누른 채 상점을 열면 건너뜁니다.",
         "Repairs all worn and carried gear at a merchant who can repair. Hold Shift while opening the merchant to skip.")
+    check("moneyLog", "돈 출입 채팅 알림", "Money changes in chat",
+        "돈이 들어오거나 나갈 때마다 금액과 이유(판매·구매·수리·비행·교관·우편·경매장·거래·퀘스트 등)를 채팅창에 씁니다. 전리품 돈은 게임이 이미 알려 주므로 뺍니다.",
+        "Prints every money change with what it was for (sales, purchases, repairs, flights, trainers, mail, auctions, trades, quests ...). Looted money is left out: the game shows it already.")
+    check("tradeWhisper", "거래 내역 귓속말", "Whisper trade summary",
+        "다른 플레이어와 거래를 마치면 주고받은 물건과 금액을 상대에게 귓속말로 보냅니다.",
+        "After a trade with another player, whispers them what was given and received, items and money.")
     endChecks()
     section("아이콘 표시", "Item icons")
     check("labels", "아이템 용도", "Purpose labels")

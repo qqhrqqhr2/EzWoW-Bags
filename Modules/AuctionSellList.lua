@@ -189,15 +189,78 @@ function S.Stop()
     if run then finish(nil) end
 end
 
+-- what the sell frame is about to post, kept for a confirmation the auction house may ask for
+local function capturePost(f, commodity, bag, slot)
+    local function call(method)
+        if type(f[method]) ~= "function" then return nil end
+        local ok, v = pcall(f[method], f)
+        if ok and not secret(v) then return v end
+        return nil
+    end
+    local amount
+    local input = f.PriceInput
+    if input and type(input.GetAmount) == "function" then
+        local ok, v = pcall(input.GetAmount, input)
+        if ok then amount = num(v) end
+    end
+    return { bag = bag, slot = slot, commodity = commodity, duration = num(call("GetDuration")),
+        quantity = num(call("GetQuantity")) or 1, bid = num(call("GetBidPrice")),
+        buyout = num(call("GetBuyoutPrice")) or amount, unit = num(call("GetUnitPrice")) or amount }
+end
+
+-- the auction house asked to confirm the last post: confirm it with the same values
+local function confirmPost(cur)
+    local a, p = C_AuctionHouse, cur.pending
+    if not (a and p and ItemLocation and p.duration) then return false end
+    local loc = ItemLocation:CreateFromBagAndSlot(p.bag, p.slot)
+    local ok, result
+    if p.commodity and a.ConfirmPostCommodity then
+        ok, result = pcall(a.ConfirmPostCommodity, loc, p.duration, p.quantity, p.unit)
+    elseif not p.commodity and a.ConfirmPostItem then
+        local bid = p.bid and p.bid > 0 and p.bid or nil
+        ok, result = pcall(a.ConfirmPostItem, loc, p.duration, p.quantity, bid, p.buyout)
+    end
+    return ok and result ~= false
+end
+
+-- What a click on [Post] does. True: the game's own post button is to be pressed (the frame
+-- holds the item); false: handled here (confirmed a warned post, or put the item back).
+local function prePost()
+    if not (run and run.current) then return false end
+    local cur = run.current
+    if cur.warning then
+        cur.warning = nil
+        cur.postAt = now()
+        if confirmPost(cur) then cur.note = nil; S.Render(); return false end
+    end
+    local f, commodity = T.ActiveSellFrame()
+    if not f then setStatus(ns.Text("sellNoFrame")); return false end
+    -- a refused post (or anything else) can empty the sell frame while the item stays in
+    -- the bags: put it back instead of posting an empty frame
+    local bag, slot = findItem(cur.id)
+    local fb, fs = T.SellFrameItem(f)
+    if bag and (fb ~= bag or fs ~= slot) then
+        if T.Sell(bag, slot) then
+            cur.loadedAt = now()
+            cur.note = (cur.note and (cur.note .. "\n") or "") .. ns.Text("sellListReloaded")
+            S.Render()
+        end
+        return false
+    end
+    cur.postAt, cur.note = now(), nil
+    cur.pending = capturePost(f, commodity, bag, slot)
+    return true, f
+end
+
 -- posts the item now in the sell frame (this click is the player's own)
 function S.Post()
-    if not (run and run.current) then return end
-    local f = T.ActiveSellFrame()
-    if not f then setStatus(ns.Text("sellNoFrame")); return end
+    local go, f = prePost()
+    if not go then return end
     if type(f.PostItem) == "function" and pcall(f.PostItem, f) then return end
     local button = f.PostButton
     if button and type(button.Click) == "function" then pcall(button.Click, button) end
 end
+
 
 local function priceReady()
     local info = T.SellInfo()
@@ -313,7 +376,7 @@ function S.Render()
         F.stop.text:SetText(ns.Text("sellListStop"))
         if cur then
             local step = string.format("%d/%d · %s", run.index, #run.queue, cur.name)
-            setStatus(step .. "\n" .. (priceReady() and ns.Text("sellListReady") or ns.Text("sellListWaitPrice")))
+            setStatus(step .. "\n" .. (cur.note or (priceReady() and ns.Text("sellListReady") or ns.Text("sellListWaitPrice"))))
         end
     else
         F.start.text:SetText(txt("sellListStart", selected))
@@ -555,12 +618,45 @@ end
 -- Events: a post finished, the auction house closed
 ---------------------------------------------------------------------------
 local events = CreateFrame("Frame")
-for _, event in ipairs({ "AUCTION_HOUSE_AUCTION_CREATED", "AUCTION_HOUSE_CLOSED", "BAG_UPDATE_DELAYED" }) do
+-- replies of the auction house that can follow a post (some may not exist on this client)
+local POST_REPLIES = { "UI_ERROR_MESSAGE", "AUCTION_HOUSE_POST_WARNING", "AUCTION_HOUSE_POST_ERROR",
+    "AUCTION_HOUSE_SHOW_ERROR", "AUCTION_HOUSE_SHOW_NOTIFICATION", "AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION",
+    "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN" }
+local isReply = {}
+for _, event in ipairs(POST_REPLIES) do isReply[event] = true end
+for _, event in ipairs({ "AUCTION_HOUSE_AUCTION_CREATED", "AUCTION_HOUSE_CLOSED", "BAG_UPDATE_DELAYED", unpack(POST_REPLIES) }) do
     pcall(events.RegisterEvent, events, event)
 end
-events:SetScript("OnEvent", function(_, event)
+local function plain(v)
+    if v == nil or secret(v) then return nil end
+    local s = tostring(v)
+    if s == "" then return nil end
+    return s
+end
+events:SetScript("OnEvent", function(_, event, a1, a2)
     if not ns.ready then return end
-    if event == "AUCTION_HOUSE_CLOSED" then
+    if isReply[event] then
+        -- the auction house answered the post just sent: show it next to the item
+        local cur = run and run.current
+        if not (cur and cur.postAt and now() - cur.postAt < 3) then return end
+        if event == "AUCTION_HOUSE_POST_WARNING" then
+            cur.warning = true
+            cur.note = "|cffe8a24a" .. ns.Text("sellListConfirm") .. "|r"
+        elseif event == "AUCTION_HOUSE_SHOW_ERROR" and num(a1) == 10 then
+            -- internal auction error: the server refuses some items even from the game's own button
+            local reason = type(ERR_AUCTION_DATABASE_ERROR) == "string" and ERR_AUCTION_DATABASE_ERROR or event
+            cur.note = "|cffe87c70" .. reason .. "|r\n" .. ns.Text("sellListRefused")
+        elseif event == "UI_ERROR_MESSAGE" then
+            local text = plain(a2)
+            if not text then return end
+            cur.note = "|cffe87c70" .. text .. "|r"
+        else
+            local parts = { event }
+            for _, v in ipairs({ plain(a1), plain(a2) }) do parts[#parts + 1] = v end
+            cur.note = "|cffe87c70" .. table.concat(parts, " · ") .. "|r"
+        end
+        S.Render()
+    elseif event == "AUCTION_HOUSE_CLOSED" then
         run = nil
         if F then F:Hide() end
         local P = T.GetPanel()

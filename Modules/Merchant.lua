@@ -163,12 +163,18 @@ function Merchant.Repair()
     local cost, canRepair = GetRepairAllCost()
     if not canRepair or not cost or cost <= 0 then return end
     if (GetMoney and GetMoney() or 0) >= cost then
+        -- its own line below; the money log leaves this change out
+        if ns.MoneyLog then ns.MoneyLog.Mute("cost", 1.5) end
         pcall(RepairAllItems)
         ns.Print(ns.Text("autoRepairDone"):format(ns.Money(cost)))
     else
         ns.Print("|cffe77c70" .. ns.Text("autoRepairNoGold") .. "|r")
     end
 end
+
+-- The money log leaves out what these two print themselves.
+local function autoSelling() return current ~= nil and not current.reported end
+if ns.MoneyLog then ns.MoneyLog.gainMuted = autoSelling end
 
 function Merchant.OnShow()
     merchantOpen = true

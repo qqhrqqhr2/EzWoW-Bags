@@ -26,9 +26,11 @@
 ## X-License: GPL-2.0
 ## X-Website: https://github.com/qqhrqqhr2/EzWoW-Bags
 ## IconTexture: Interface\AddOns\EzWoW-Bags\Media\Icon
-## SavedVariables: EzWoW_BagsDB
+## SavedVariables: EzWoW_BagsDB, EzWoW_SharedData
 ## OptionalDeps: EzWoW-ProfessionRecipes, EzWoW-Tooltip
 
+Libs\EzWoWGamePad\GamePad.lua
+Libs\EzWoWShare\Share.lua
 Core\Bootstrap.lua
 Core\Locales.lua
 Core\API.lua
@@ -38,6 +40,7 @@ Modules\Search.lua
 Modules\Inventory.lua
 Modules\Model.lua
 Modules\Actions.lua
+Modules\MoneyLog.lua
 Modules\Merchant.lua
 Modules\Auction.lua
 Modules\History.lua
