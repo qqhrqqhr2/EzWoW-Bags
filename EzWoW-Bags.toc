@@ -23,7 +23,7 @@
 ## Author: qqhrqqhr2
 ## Version: 0.1.26
 ## Category: EzWoW
-## X-License: GPL-2.0
+## X-License: GPL-3.0
 ## X-Website: https://github.com/qqhrqqhr2/EzWoW-Bags
 ## IconTexture: Interface\AddOns\EzWoW-Bags\Media\Icon
 ## SavedVariables: EzWoW_BagsDB, EzWoW_SharedData

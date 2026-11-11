@@ -170,3 +170,9 @@ WoW Forever용 가방 애드온입니다. 가방·은행을 하나의 창에서 
 - `/ezbags scan` — 경매장이 열린 상태에서 전체 시세 수집
 
 지원 언어: English, 한국어, Deutsch, Français, Español, Русский, 简体中文, 繁體中文.
+
+---
+
+**Support:** If you find this addon useful, you can support its development. [Buy Me a Coffee ☕](https://buymeacoffee.com/qqhrqqhr2)
+
+**후원:** 애드온이 도움이 되셨다면 개발 후원으로 응원해 주세요. [Buy Me a Coffee ☕](https://buymeacoffee.com/qqhrqqhr2)
