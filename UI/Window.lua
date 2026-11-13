@@ -2,9 +2,9 @@ local _, ns = ...
 
 -- The "EzWoW - ..." name line at the end of tooltip additions is drawn small.
 -- Shared by the EzWoW addons: the first one loaded sets it up.
-if not (_G.EzWoWTooltipTagSizer and _G.EzWoWTooltipTagSizer.version == 3) then
+if not (_G.EzWoWTooltipTagSizer and (tonumber(_G.EzWoWTooltipTagSizer.version) or 0) >= 4) then
     local sizer = {}
-    sizer.version = 3
+    sizer.version = 4
     _G.EzWoWTooltipTagSizer = sizer
     local smallFont
     local original = setmetatable({}, { __mode = "k" })   -- font string -> its own font object
@@ -21,14 +21,25 @@ if not (_G.EzWoWTooltipTagSizer and _G.EzWoWTooltipTagSizer.version == 3) then
         if type(text) ~= "string" or (issecretvalue and issecretvalue(text)) then return false end
         return text:find("^EzWoW %- ") ~= nil
     end
+    -- the size goes on the line itself too: a size another addon put on the
+    -- line (a font addon) would stay over the font object otherwise
+    local function setSize(fs, font)
+        if not (font and font.GetFont and fs.SetFont) then return end
+        local path, size, flags = font:GetFont()
+        if path and size then fs:SetFont(path, size, flags or "") end
+    end
     local function fit(fs, tag)
         if not fs then return end
         if tag then
             if not original[fs] then original[fs] = fs:GetFontObject() or GameTooltipText end
-            if tagFont() then fs:SetFontObject(smallFont) end
+            if tagFont() then
+                fs:SetFontObject(smallFont)
+                setSize(fs, smallFont)
+            end
             fs:SetTextColor(0.5, 0.5, 0.5)
         elseif original[fs] then
             fs:SetFontObject(original[fs])
+            setSize(fs, original[fs])
             original[fs] = nil
         end
     end
@@ -53,6 +64,7 @@ if not (_G.EzWoWTooltipTagSizer and _G.EzWoWTooltipTagSizer.version == 3) then
             local fsName = fs.GetName and fs:GetName()
             if type(fsName) == "string" and (fsName:find(rightPrefix, 1, true) == 1 or fsName:find(leftPrefix, 1, true) == 1) then
                 fs:SetFontObject(font)
+                setSize(fs, font)
                 original[fs] = nil
             end
         end
@@ -315,10 +327,17 @@ function ns.AddTooltipItemLines(tip, id)
         if line then tip:AddLine(line, .94, .72, .42) end
     end
     for _, row in ipairs(ns.CachedCounts(id)) do
-        tip:AddDoubleLine(row.key:match("^(.-) %- ") or row.key,
-            ns.T("bags") .. " " .. row.bags .. " · " .. ns.T("bank") .. " " .. row.bank,
-            .65, .72, .78, .9, .94, .96)
-        if row.bankTime then tip:AddLine("  " .. ns.T("bank") .. ": " .. stamp(row.bankTime), .5, .58, .62) end
+        -- only the places that hold some (a bank with none is left out)
+        local bags, bank = tonumber(row.bags) or 0, tonumber(row.bank) or 0
+        local parts = {}
+        if bags > 0 then parts[#parts + 1] = ns.T("bags") .. " " .. bags end
+        if bank > 0 then parts[#parts + 1] = ns.T("bank") .. " " .. bank end
+        if #parts > 0 then
+            -- one line (a right-hand text can come out in a smaller font)
+            tip:AddLine((row.key:match("^(.-) %- ") or row.key) .. "   |cffe6f0f5" .. table.concat(parts, " · ") .. "|r",
+                .65, .72, .78)
+            if bank > 0 and row.bankTime then tip:AddLine("  " .. ns.T("bank") .. ": " .. stamp(row.bankTime), .5, .58, .62, true) end
+        end
     end
 end
 function ns.ClearTooltipItem(tip) tooltipItem[tip] = nil end

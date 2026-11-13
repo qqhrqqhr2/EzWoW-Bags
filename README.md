@@ -23,7 +23,7 @@ WoW Forever (`Interface: 16001`) · `/ezbags`, `/ezb`
 
 ![설정창](https://raw.githubusercontent.com/qqhrqqhr2/EzWoW-Bags/master/docs/images/settings_ko.png)
 
-> 이미지는 애드온 코드의 창 크기·좌표·색상·문구로 재현한 **예시 화면**입니다. 아이템 그림은 단순화했고, 캐릭터 이름·판매자 이름·시세 숫자는 지어낸 예시입니다.
+> 실제 게임 화면입니다(WoW Forever, 한국어 클라이언트). 캐릭터 · 다른 플레이어 이름과 채팅 내용은 가렸습니다.
 
 ### 설치
 
@@ -31,12 +31,12 @@ WoW Forever (`Interface: 16001`) · `/ezbags`, `/ezb`
 2. 캐릭터 선택 화면의 **애드온** 목록에서 켭니다. 다른 가방 대체 애드온은 꺼 두세요.
 3. **B 키** 또는 기본 가방 버튼을 누르면 통합 창이 열립니다.
 
-### 사용법 (위 그림의 번호)
+### 사용법
 
 | 번호 | 부분 | 설명 |
 |---|---|---|
 | ① | 탭 | **가방 · 은행 · 시세** 화면을 바꿉니다. |
-| ② | 검색 | 이름·종류·용도로 찾습니다. `ilvl>=50`, `rarity=rare`, `AND / OR / NOT`, 괄호, 따옴표를 쓸 수 있습니다. |
+| ② | 검색 | 이름·종류·용도로 찾습니다. `ilvl>=50`, `rarity=rare`, `AND / OR / NOT`, 괄호, 따옴표를 쓸 수 있습니다. 검색 중에는 칸 테두리가 강조색이 되고, 오른쪽 × 버튼으로 바로 지웁니다. |
 | ③ | 캐릭터 선택 | 같은 서버의 다른 캐릭터를 고르면 그 캐릭터가 마지막으로 저장한 가방·은행을 **보기 전용**으로 보여 줍니다. 은행은 그 캐릭터로 은행을 한 번 열어야 저장됩니다. |
 | ④ | 분류 목록 | 누르면 그 분류만 보여 줍니다. 오른쪽 클릭은 분류 메뉴입니다. 아이템을 끌어다 놓으면 그 사용자 분류에 넣습니다. |
 | ⑤ | 분류 머리글 | 누르면 접고 펼칩니다. 오른쪽 클릭: 고정 · 숨김 · 끄기, 사용자 분류 순서·검색식·삭제, 은행·우편·거래·상인으로 옮기기. 시세를 아는 아이템은 합계(≈)를 보여 줍니다. |
@@ -68,6 +68,8 @@ WoW Forever (`Interface: 16001`) · `/ezbags`, `/ezb`
 - EzWoW - Profession Recipes가 켜져 있으면 재료의 쓰임새는 그쪽 툴팁 목록이 보여 주고, Bags의 "재료:" 줄은 나오지 않습니다.
 - 상점 창을 열면 가방의 회색(하급) 잡템을 모두 팔고, 수리할 수 있는 상인이면 착용·가방 장비를 모두 수리한 뒤 채팅창에 금액을 알려 줍니다. **Shift를 누른 채 상점을 열면** 둘 다 건너뜁니다. 골드가 모자라면 수리하지 않습니다. 두 기능은 설정창의 **상인** 구역에서 끌 수 있습니다.
 - 자동 판매·수리는 원래 EzWoW - Tooltip의 기능이었습니다. 처음 실행할 때 Tooltip에서 고른 설정을 한 번 가져오고, Bags가 켜져 있으면 Tooltip은 이 기능을 쓰지 않습니다.
+- **돈 출입 알림**: 돈이 들어오거나 나갈 때마다 금액과 이유(판매·구매·수리·비행·교관·우편·경매장·거래·퀘스트 등)를 채팅창에 알려 줍니다.
+- **거래 내역 귓속말**: 다른 플레이어와 거래를 마치면 주고받은 물건과 금액을 상대에게 귓속말로 보냅니다. 두 기능 모두 설정에서 끌 수 있습니다.
 - 아래쪽 **정리** 버튼: 게임의 가방 정리 기능으로 가방(은행 탭에서는 열린 은행)을 정리합니다. 전투 중에는 쓸 수 없습니다.
 - 전투 중에는 창의 배치·크기를 바꾸지 않고 개수·쿨다운만 갱신합니다. 전투 중에 연 창·닫은 창과 새 배치는 전투가 끝나면 적용됩니다.
 
@@ -84,6 +86,8 @@ WoW Forever (`Interface: 16001`) · `/ezbags`, `/ezb`
 | ① | 묶음 합계 표시 | 켬 |
 | ② | 회색 잡템 자동 판매 (Shift를 누른 채 상점을 열면 건너뜀) | 켬 |
 | ② | 장비 자동 수리 (Shift를 누른 채 상점을 열면 건너뜀) | 켬 |
+| ② | 돈 출입 채팅 알림 | 켬 |
+| ② | 거래 내역 귓속말 | 켬 |
 | ③ | 아이템 용도 · 장비 레벨 | 켬 |
 | ③ | 빈 칸 개별 표시 · 새 아이템 분류 | 끔 |
 | ④ | 보기: 분류 · 전체 · 목록 | 분류 |
@@ -139,7 +143,7 @@ A bag addon that shows your bags and bank in one window, **grouped by category**
 
 ![Settings window](https://raw.githubusercontent.com/qqhrqqhr2/EzWoW-Bags/master/docs/images/settings_en.png)
 
-> These are **mock-ups** rebuilt from the window sizes, coordinates, colours and strings in the code. Item art is simplified; character names, seller names and prices are made up.
+> In-game screenshots (WoW Forever, Korean client). Character and player names and chat text are blurred.
 
 ### Installation
 
@@ -147,12 +151,12 @@ A bag addon that shows your bags and bank in one window, **grouped by category**
 2. Enable it in the **AddOns** list on the character select screen. Turn off other bag replacement addons.
 3. Press **B** or a bag button to open the window.
 
-### How to use (numbers in the picture)
+### How to use
 
 | No. | Part | Description |
 |---|---|---|
 | ① | Tabs | Switch between **Bags · Bank · Prices**. |
-| ② | Search | Name, type or purpose. Supports `ilvl>=50`, `rarity=rare`, `AND / OR / NOT`, brackets and quotes. |
+| ② | Search | Name, type or purpose. Supports `ilvl>=50`, `rarity=rare`, `AND / OR / NOT`, brackets and quotes. While searching the box border lights up; the × button on the right clears it. |
 | ③ | Character picker | Pick another character on the same realm to see its last saved bags and bank, **read only**. A bank is saved once you open it on that character. |
 | ④ | Category list | Click to show only that category; right-click for its menu; drop an item on a custom category to put it there. |
 | ⑤ | Category header | Click to collapse. Right-click: pin · hide · disable, custom category order/search/delete, move to bank · mail · trade · vendor. Shows a total (≈) for items with a known price. |
@@ -184,6 +188,8 @@ A bag addon that shows your bags and bank in one window, **grouped by category**
 - With EzWoW - Profession Recipes enabled, its tooltip list shows where a reagent is used and Bags leaves out its "Materials:" line.
 - When a vendor opens, every grey (poor) item in your bags is sold, and at a vendor who can repair all worn and carried gear is repaired; the gold is reported in chat. **Hold Shift while opening the vendor** to skip both. Repair is skipped when you do not have enough gold. Both can be turned off in the **Merchant** section of the settings.
 - Auto-sell and auto-repair used to be EzWoW - Tooltip features. On the first start the choices made there are carried over once; while Bags is enabled, Tooltip leaves these to Bags.
+- **Money in chat**: each time gold comes in or goes out, the amount and the reason (selling, buying, repair, flights, trainers, mail, auction house, trade, quests…) show in chat.
+- **Trade summary whisper**: after a trade, the items and gold that changed hands are whispered to the other player. Both can be turned off in the settings.
 - **Sort** button (bottom): sorts your bags (or the open bank on the Bank tab) with the game's own sort. Not available in combat.
 - In combat the window keeps its layout and size and only updates counts and cooldowns; opening, closing and the new layout happen when combat ends.
 
@@ -200,6 +206,8 @@ While the bank, mail, trade or a vendor is open, right-click a header → pick t
 | ① | Combine stacks | On |
 | ② | Auto-sell grey junk (hold Shift while opening the vendor to skip) | On |
 | ② | Auto-repair gear (hold Shift while opening the vendor to skip) | On |
+| ② | Money changes in chat | On |
+| ② | Whisper trade summary | On |
 | ③ | Purpose labels · Equipment levels | On |
 | ③ | Individual free slots · New item category | Off |
 | ④ | View: Sections · Grid · List | Sections |

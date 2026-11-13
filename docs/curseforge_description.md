@@ -13,7 +13,7 @@ A bag addon for WoW Forever that shows your bags and bank in one window, grouped
 
 ![Settings window](https://raw.githubusercontent.com/qqhrqqhr2/EzWoW-Bags/master/docs/images/settings_en.png)
 
-*Mock-ups rebuilt from the window sizes, coordinates, colours and strings in the addon code. Item art is simplified; names and prices are made up.*
+*In-game screenshots (WoW Forever, Korean client). Character and player names and chat text are blurred.*
 
 ## Features
 
@@ -32,7 +32,7 @@ A bag addon for WoW Forever that shows your bags and bank in one window, grouped
 - **Right-click uses** potions, food and the Hearthstone without blocked-action errors, also in combat.
 
 ### Search
-- Search by name, type or purpose. Supports `ilvl>=50`, `rarity=rare`, `AND / OR / NOT`, brackets and quotes.
+- Search by name, type or purpose. Supports `ilvl>=50`, `rarity=rare`, `AND / OR / NOT`, brackets and quotes. The × button clears the search.
 - Save a search as a custom category.
 
 ### Alts and auction prices
@@ -56,6 +56,10 @@ A bag addon for WoW Forever that shows your bags and bank in one window, grouped
 - **Auto-sell grey junk**: every grey item in your bags is sold when a vendor opens, and the gold is reported in chat.
 - **Auto-repair gear**: all worn and carried gear is repaired at a vendor who can repair (skipped when you do not have enough gold).
 - **Hold Shift** while opening the vendor to skip both this time.
+
+### Gold and trades
+- **Money in chat**: each time gold comes in or goes out, the amount and the reason (selling, buying, repair, flights, trainers, mail, auction house, trade, quests…).
+- **Trade summary whisper**: after a trade, the items and gold that changed hands are whispered to the other player. Both can be turned off.
 
 ## Settings (`/ezbags settings`)
 - **General**: language (automatic + 8 languages), replace default bags, combine stacks.
@@ -97,7 +101,7 @@ WoW Forever용 가방 애드온입니다. 가방·은행을 하나의 창에서 
 
 ![설정창](https://raw.githubusercontent.com/qqhrqqhr2/EzWoW-Bags/master/docs/images/settings_ko.png)
 
-*애드온 코드의 창 크기·좌표·색상·문구로 재현한 예시 화면입니다. 아이템 그림은 단순화했고, 이름과 시세는 지어낸 예시입니다.*
+*실제 게임 화면입니다(WoW Forever, 한국어 클라이언트). 캐릭터 · 다른 플레이어 이름과 채팅 내용은 가렸습니다.*
 
 ## 기능
 
@@ -116,7 +120,7 @@ WoW Forever용 가방 애드온입니다. 가방·은행을 하나의 창에서 
 - **오른쪽 클릭으로 사용**: 물약·음식·귀환석을 애드온 차단 오류 없이, 전투 중에도 씁니다.
 
 ### 검색
-- 이름·종류·용도로 찾습니다. `ilvl>=50`, `rarity=rare`, `AND / OR / NOT`, 괄호, 따옴표.
+- 이름·종류·용도로 찾습니다. `ilvl>=50`, `rarity=rare`, `AND / OR / NOT`, 괄호, 따옴표. 검색칸 오른쪽 × 버튼으로 바로 지웁니다.
 - 검색식을 사용자 분류로 저장할 수 있습니다.
 
 ### 부캐와 경매장 시세
@@ -140,6 +144,10 @@ WoW Forever용 가방 애드온입니다. 가방·은행을 하나의 창에서 
 - **회색 잡템 자동 판매**: 상점을 열면 가방의 회색 아이템을 모두 팔고 받은 금액을 채팅창에 알려 줍니다.
 - **장비 자동 수리**: 수리할 수 있는 상인이면 착용·가방의 모든 장비를 수리합니다(골드가 모자라면 건너뜀).
 - 상점을 열 때 **Shift**를 누르고 있으면 이번에는 둘 다 건너뜁니다.
+
+### 돈과 거래
+- **돈 출입 알림**: 돈이 들어오거나 나갈 때마다 금액과 이유(판매·구매·수리·비행·교관·우편·경매장·거래·퀘스트 등)를 채팅창에 알려 줍니다.
+- **거래 내역 귓속말**: 거래를 마치면 주고받은 물건과 금액을 상대에게 귓속말로 보냅니다. 두 기능 모두 끌 수 있습니다.
 
 ## 설정 (`/ezbags settings`)
 - **일반**: 언어(자동 + 8개 언어), 기본 가방 대체, 묶음 합계 표시.
