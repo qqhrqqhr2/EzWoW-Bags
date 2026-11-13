@@ -52,7 +52,16 @@ end
 -- Notes: what the next money change is for
 -----------------------------------------------------------------------------
 function MoneyLog.Note(sign, label, text, count, quiet, keep)
-    local n = { sign = sign, label = label, text = text, count = count, quiet = quiet, time = now(), keep = keep or KEEP }
+    local t = now()
+    -- drop expired notes here too: describe() does not run while the chat log is off or muted
+    if #notes > 0 then
+        local live = {}
+        for _, old in ipairs(notes) do
+            if t - old.time <= old.keep then live[#live + 1] = old end
+        end
+        notes = live
+    end
+    local n = { sign = sign, label = label, text = text, count = count, quiet = quiet, time = t, keep = keep or KEEP }
     notes[#notes + 1] = n
     return n
 end

@@ -26,7 +26,7 @@
 ## X-License: GPL-3.0
 ## X-Website: https://github.com/qqhrqqhr2/EzWoW-Bags
 ## IconTexture: Interface\AddOns\EzWoW-Bags\Media\Icon
-## SavedVariables: EzWoW_BagsDB, EzWoW_SharedData
+## SavedVariables: EzWoW_BagsDB, EzWoW_SharedData, EzWoW_ShareStore_Bags
 ## OptionalDeps: EzWoW-ProfessionRecipes, EzWoW-Tooltip
 
 Libs\EzWoWGamePad\GamePad.lua

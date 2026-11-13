@@ -844,7 +844,7 @@ function ns.Render()
     f.next:SetShown(q ~= nil); f.cancel:SetShown(q ~= nil); f.queue:SetText("")
     if q then
         local e = q.items[q.index]
-        f.queue:SetText(ns.T("move") .. " → " .. q.target .. "  " .. q.index .. "/" .. #q.items .. "  " .. (e and e.name or ns.T("done")) .. (q.pending and " …" or ""))
+        f.queue:SetText(ns.T("move") .. " → " .. (q.target == "bank" and ns.T("bank") or ns.Text(q.target)) .. "  " .. q.index .. "/" .. #q.items .. "  " .. (e and e.name or ns.T("done")) .. (q.pending and " …" or ""))
     end
     f.clearNew:SetShown(ns.storage == "bags" and not prices)
     f.sort.text:SetText(ns.Text("sort"))

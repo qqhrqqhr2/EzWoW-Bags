@@ -122,6 +122,22 @@ function Merchant.SellOneByOne(isRetry)
     step()
 end
 
+-- SellAllJunkItems sells every grey item and does not know this addon's locks: while a locked item
+-- that is (or may still turn out to be) grey is in the bags, junk is sold one by one instead.
+local function lockedJunkInBags()
+    local found = false
+    eachBagSlot(function(bag, slot)
+        if found then return end
+        local item = API.Item(bag, slot)
+        if item and item.id and ns.Locks.IsLocked(item.id) then
+            local q = item.quality
+            if q == nil and C_Item and C_Item.GetItemQualityByID then q = C_Item.GetItemQualityByID(item.id) end
+            if q == nil or q == POOR then found = true end
+        end
+    end)
+    return found
+end
+
 -- Bulk junk sell. One SellAllJunkItems call is fire-and-forget: requests past the server rate
 -- limit are dropped and items whose data is not cached yet are skipped, so re-count after each
 -- pass and send again while the count keeps falling.
@@ -146,7 +162,14 @@ function Merchant.SellAll()
             sweep.stalls, sweep.delay = 0, SWEEP_BASE_DELAY
         end
         sweep.lastCount = junk
-        if junk > 0 then pcall(C_MerchantFrame.SellAllJunkItems) end
+        if junk > 0 then
+            if lockedJunkInBags() then
+                -- report what the bulk passes already sold (the money log is muted for it), then hand over
+                report(sweep, false)
+                return Merchant.SellOneByOne()
+            end
+            pcall(C_MerchantFrame.SellAllJunkItems)
+        end
         if sweep.passes >= SWEEP_MAX_PASSES then
             -- the last request is still in flight: check once more after it lands
             after(sweep.delay, function() if sweep == current then report(sweep, true) end end)

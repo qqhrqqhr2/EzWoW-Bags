@@ -60,6 +60,11 @@ function ns.BeginMove(category, target)
     for _, raw in ipairs(ns.Snapshot() and ns.Snapshot().items or {}) do
         -- Locked items stay put when a category goes to a vendor, the mail or a trade.
         local locked = target ~= "bank" and ns.Locks.IsLocked(raw.id)
+        -- Skip items already attached or held (client lock) and soulbound items the mail won't take.
+        if not locked and (target == "mail" or target == "trade") then
+            local live = API.Item(raw.bag, raw.slot)
+            locked = (live and live.locked) or (target == "mail" and raw.bound)
+        end
         if not locked and ns.Category(ns.Enrich(ns.Copy(raw))) == category then
             -- Merchant batches (a category the player picked) only include common/poor, non-quest,
             -- unassigned items with a vendor price that are not refundable.
@@ -72,14 +77,32 @@ function ns.BeginMove(category, target)
     ns.moveQueue = #queue > 0 and { items = queue, index = 1, target = target, player = ns.player, storage = ns.storage } or nil
     ns.Refresh()
 end
+-- The client refused the attachment (soulbound for trade, conjured for mail...): put it back and go on.
+local function skipRejected(q, e)
+    ClearCursor()
+    ns.Print(ns.T("stop") .. ": " .. tostring(e.name))
+    q.index = q.index + 1
+    if q.index > #q.items then ns.moveQueue = nil end
+    ns.Refresh()
+end
 function ns.NextMove()
     local q = ns.moveQueue
     if not q or q.pending or API.InCombat() or API.CursorBusy() then return end
     if q.storage ~= ns.storage or ns.selected ~= ns.player then ns.moveQueue = nil; ns.Refresh(); return end
     local e = q.items[q.index]
     if not e then ns.moveQueue = nil; ns.Refresh(); return end
+    if q.target == "mail" or q.target == "trade" then
+        -- an entry attached by hand meanwhile is skipped instead of dropping the whole queue
+        local cur = API.Item(e.bag, e.slot)
+        if cur and cur.locked then
+            q.index = q.index + 1
+            if q.index > #q.items then ns.moveQueue = nil end
+            ns.Refresh(); return
+        end
+    end
     if not API.CanAct(e) then ns.moveQueue = nil; ns.Refresh(); return end
     local fn = API.Container("PickupContainerItem")
+    local attach
     if q.target == "bank" then
         if not ns.state.bank then return end
         local free = false
@@ -99,26 +122,36 @@ function ns.NextMove()
             if not GetSendMailItem(i) then empty = i; break end
         end
         if not empty then return end
+        attach = empty
         fn(e.bag, e.slot); ClickSendMailItemButton(empty)
-        if API.CursorBusy() then ClearCursor(); return end
+        if API.CursorBusy() then return skipRejected(q, e) end
     elseif q.target == "trade" then
         if not ns.state.trade or ns.storage ~= "bags" or not fn or not ClickTradeButton then return end
         local empty
         for i = 1, 6 do if not GetTradePlayerItemInfo(i) then empty = i; break end end
         if not empty then return end
+        attach = empty
         fn(e.bag, e.slot); ClickTradeButton(empty)
-        if API.CursorBusy() then ClearCursor(); return end
+        if API.CursorBusy() then return skipRejected(q, e) end
     else return end
     -- A successful API call does not prove the server moved the item. Wait for a bag change.
-    q.pending = { item = e, deadline = GetTime() + 5 }
+    q.pending = { item = e, deadline = GetTime() + 5, attach = attach }
     ns.Dirty()
+end
+-- Mail and trade attachments stay in their bag slot, only locked. Count it moved once the slot shows it.
+local function attached(q, pending, live)
+    if not pending.attach or not live or not live.locked then return false end
+    local get = (q.target == "mail" and GetSendMailItemLink) or (q.target == "trade" and GetTradePlayerItemLink) or nil
+    local link = type(get) == "function" and get(pending.attach) or nil
+    if type(link) ~= "string" or type(pending.item.link) ~= "string" then return false end
+    return link:match("item:(%-?%d+)") == pending.item.link:match("item:(%-?%d+)")
 end
 function ns.TickMove()
     local q = ns.moveQueue
     if not q or not q.pending then return end
     local pending = q.pending
     local live = API.Item(pending.item.bag, pending.item.slot)
-    if not live or live.link ~= pending.item.link or live.count ~= pending.item.count then
+    if not live or live.link ~= pending.item.link or live.count ~= pending.item.count or attached(q, pending, live) then
         q.pending = nil; q.index = q.index + 1
         if q.index > #q.items then ns.moveQueue = nil end
         ns.Dirty()
